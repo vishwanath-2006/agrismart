@@ -13,9 +13,18 @@ export const AuthCallbackPage: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
+    console.log('[AgriSmart Auth] AuthCallback mounted. Initializing session establishment...');
+
+    // Schedule a global fallback timer immediately so the screen NEVER hangs indefinitely
+    const globalTimeoutTimer = setTimeout(() => {
+      if (isMounted && !isProcessingRef.current) {
+        console.warn('[AgriSmart Auth] Callback timeout reached without resolution. Showing retry option.');
+        setErrorMessage('Authentication took longer than expected. Please try signing in again.');
+      }
+    }, 8000);
 
     const parseErrorFromUrl = () => {
-      // Check query params
+      // Check query parameters
       const searchParams = new URLSearchParams(window.location.search);
       const queryError = searchParams.get('error_description') || searchParams.get('error');
       if (queryError) return queryError;
@@ -31,120 +40,143 @@ export const AuthCallbackPage: React.FC = () => {
     };
 
     const processAuthenticatedUser = async (userId: string) => {
-      if (isProcessingRef.current) return;
+      if (isProcessingRef.current) {
+        console.log('[AgriSmart Auth] User is already being processed. Skipping duplicate call.');
+        return;
+      }
       isProcessingRef.current = true;
+      clearTimeout(globalTimeoutTimer);
+
+      console.log(`[AgriSmart Auth] Session verified. Querying profile for user ID: ${userId.substring(0, 8)}...`);
+
+      let targetRole: UserRole | null = null;
 
       try {
-        const { data: profile, error } = await supabase
+        // Query profiles with a strict 2.5s timeout so network latency NEVER blocks routing
+        const profilePromise = supabase
           .from('profiles')
           .select('role')
           .eq('id', userId)
           .single();
 
-        if (error && error.code !== 'PGRST116') {
-          console.warn('Profile query notice:', error.message);
-        }
+        const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+          setTimeout(() => resolve({ data: null, error: new Error('Profile query timeout') }), 2500)
+        );
 
-        if (!isMounted) return;
+        const result = (await Promise.race([profilePromise, timeoutPromise])) as any;
 
-        if (profile?.role) {
-          const role = profile.role as UserRole;
-          switchRole(role);
-          if (role === 'farmer') navigate('/farmer/dashboard', { replace: true });
-          else if (role === 'buyer') navigate('/buyer/marketplace', { replace: true });
-          else navigate('/transporter/dashboard', { replace: true });
+        if (result.data?.role) {
+          targetRole = result.data.role as UserRole;
+          console.log(`[AgriSmart Auth] Profile found with assigned role: ${targetRole}`);
         } else {
-          // New Google user without role -> redirect to role selection
-          navigate('/select-role', { replace: true });
+          console.log('[AgriSmart Auth] No existing profile/role found or query timed out. Routing to role selection onboarding.');
         }
-      } catch (err) {
-        console.warn('Profile dispatch fallback:', err);
-        if (isMounted) {
-          navigate('/select-role', { replace: true });
+      } catch (err: any) {
+        console.warn('[AgriSmart Auth] Profile lookup notice:', err?.message || err);
+      }
+
+      if (!isMounted) return;
+
+      if (targetRole) {
+        switchRole(targetRole);
+        if (targetRole === 'farmer') {
+          console.log('[AgriSmart Auth] Redirecting to /farmer/dashboard');
+          navigate('/farmer/dashboard', { replace: true });
+        } else if (targetRole === 'buyer') {
+          console.log('[AgriSmart Auth] Redirecting to /buyer/marketplace');
+          navigate('/buyer/marketplace', { replace: true });
+        } else {
+          console.log('[AgriSmart Auth] Redirecting to /transporter/dashboard');
+          navigate('/transporter/dashboard', { replace: true });
         }
+      } else {
+        console.log('[AgriSmart Auth] Redirecting to /select-role');
+        navigate('/select-role', { replace: true });
       }
     };
 
     const handleCallback = async () => {
-      // 1. Check for explicit OAuth error in URL
+      // 1. Check for explicit OAuth errors in URL
       const urlError = parseErrorFromUrl();
       if (urlError) {
+        console.error('[AgriSmart Auth] OAuth provider returned error in URL:', urlError);
         if (isMounted) setErrorMessage(urlError);
+        clearTimeout(globalTimeoutTimer);
         return;
       }
 
       try {
-        // 2. Process Implicit Hash Flow (#access_token=...&refresh_token=...)
+        // 2. Check if a session is already established by Supabase auto-detector
+        const { data: initialData } = await supabase.auth.getSession();
+        if (initialData.session?.user) {
+          console.log('[AgriSmart Auth] Active session detected immediately from getSession().');
+          await processAuthenticatedUser(initialData.session.user.id);
+          return;
+        }
+
+        // 3. Check for Implicit Hash Flow (#access_token=...&refresh_token=...)
         const rawHash = window.location.hash;
-        if (rawHash && rawHash.includes('access_token=')) {
+        const hasAccessTokenInHash = rawHash && rawHash.includes('access_token=');
+        console.log(`[AgriSmart Auth] URL hash analysis: hasAccessToken=${Boolean(hasAccessTokenInHash)}`);
+
+        if (hasAccessTokenInHash) {
           const hashString = rawHash.startsWith('#') ? rawHash.substring(1) : rawHash;
           const hashParams = new URLSearchParams(hashString);
           const accessToken = hashParams.get('access_token');
           const refreshToken = hashParams.get('refresh_token');
 
           if (accessToken) {
-            const { data, error } = await supabase.auth.setSession({
+            console.log('[AgriSmart Auth] Calling supabase.auth.setSession with extracted access token...');
+            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken || ''
             });
 
-            if (error) {
-              console.error('setSession error from hash:', error);
-              throw error;
+            if (sessionError) {
+              console.error('[AgriSmart Auth] setSession failed:', sessionError.message);
+              throw sessionError;
             }
 
-            if (data.session?.user) {
-              await processAuthenticatedUser(data.session.user.id);
+            if (sessionData.session?.user) {
+              console.log('[AgriSmart Auth] setSession succeeded.');
+              await processAuthenticatedUser(sessionData.session.user.id);
               return;
             }
           }
         }
 
-        // 3. Process PKCE Code Flow (?code=...)
+        // 4. Check for PKCE Code Flow (?code=...)
         const searchParams = new URLSearchParams(window.location.search);
         const code = searchParams.get('code');
         if (code) {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) {
-            console.error('exchangeCodeForSession error:', error);
-            throw error;
+          console.log('[AgriSmart Auth] PKCE authorization code detected in query. Exchanging for session...');
+          const { data: codeData, error: codeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (codeError) {
+            console.error('[AgriSmart Auth] exchangeCodeForSession failed:', codeError.message);
+            throw codeError;
           }
 
-          if (data.session?.user) {
-            await processAuthenticatedUser(data.session.user.id);
+          if (codeData.session?.user) {
+            console.log('[AgriSmart Auth] Code exchange succeeded.');
+            await processAuthenticatedUser(codeData.session.user.id);
             return;
           }
         }
 
-        // 4. Check for already established session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-          console.warn('getSession error:', sessionError);
-        }
-
-        if (session?.user) {
-          await processAuthenticatedUser(session.user.id);
-          return;
-        }
-
-        // 5. Subscribe to onAuthStateChange in case session is established asynchronously
-        const { data: authSubscription } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-          if (currentSession?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
-            authSubscription.subscription.unsubscribe();
+        // 5. Setup auth state change listener as a fallback listener
+        console.log('[AgriSmart Auth] Setting up onAuthStateChange listener fallback...');
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+          console.log(`[AgriSmart Auth] onAuthStateChange event received: ${event}`);
+          if (currentSession?.user) {
+            authListener.subscription.unsubscribe();
             await processAuthenticatedUser(currentSession.user.id);
           }
         });
-
-        // 6. Timeout safeguard
-        setTimeout(() => {
-          if (isMounted && !isProcessingRef.current) {
-            setErrorMessage('Authentication session expired or was cancelled. Please try signing in again.');
-          }
-        }, 6000);
       } catch (err: any) {
-        console.error('OAuth callback execution error:', err);
-        if (isMounted) {
-          setErrorMessage(err.message || 'Unable to establish Google Sign-In session. Please try again.');
+        console.error('[AgriSmart Auth] Uncaught callback exception:', err?.message || err);
+        if (isMounted && !isProcessingRef.current) {
+          clearTimeout(globalTimeoutTimer);
+          setErrorMessage(err?.message || 'Unable to establish Google Sign-In session. Please try again.');
         }
       }
     };
@@ -153,6 +185,7 @@ export const AuthCallbackPage: React.FC = () => {
 
     return () => {
       isMounted = false;
+      clearTimeout(globalTimeoutTimer);
     };
   }, [navigate, switchRole]);
 
