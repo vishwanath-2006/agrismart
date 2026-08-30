@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useApp } from '../../context/AppContext';
 import { LOGO_URL } from '../../data/mockData';
@@ -7,44 +7,33 @@ import { UserRole } from '../../types';
 
 export const AuthCallbackPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { switchRole } = useApp();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const handleAuthCallback = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+    let isHandled = false;
 
-        if (error) {
-          throw error;
-        }
+    const parseErrorFromUrl = () => {
+      // Check query params
+      const searchParams = new URLSearchParams(location.search);
+      const queryError = searchParams.get('error_description') || searchParams.get('error');
+      if (queryError) return queryError;
 
-        if (!session?.user) {
-          // If no session found yet, wait for onAuthStateChange
-          const { data: authListener } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-            if (currentSession?.user) {
-              authListener.subscription.unsubscribe();
-              await processUser(currentSession.user.id);
-            }
-          });
-
-          // Timeout fallback
-          setTimeout(() => {
-            if (!session?.user) {
-              setErrorMessage('Authentication session expired or was cancelled. Please try logging in again.');
-            }
-          }, 6000);
-          return;
-        }
-
-        await processUser(session.user.id);
-      } catch (err: any) {
-        console.error('OAuth callback error:', err);
-        setErrorMessage(err.message || 'Unable to complete Google Sign-In. Please try again.');
+      // Check hash fragment
+      if (location.hash && location.hash.includes('error=')) {
+        const hashParams = new URLSearchParams(location.hash.substring(1));
+        const hashError = hashParams.get('error_description') || hashParams.get('error');
+        if (hashError) return decodeURIComponent(hashError.replace(/\+/g, ' '));
       }
+
+      return null;
     };
 
     const processUser = async (userId: string) => {
+      if (isHandled) return;
+      isHandled = true;
+
       try {
         const { data: profile, error } = await supabase
           .from('profiles')
@@ -72,14 +61,65 @@ export const AuthCallbackPage: React.FC = () => {
       }
     };
 
-    handleAuthCallback();
-  }, [navigate, switchRole]);
+    const initCallback = async () => {
+      // 1. Check for URL error params
+      const urlError = parseErrorFromUrl();
+      if (urlError) {
+        setErrorMessage(urlError);
+        return;
+      }
+
+      try {
+        // 2. Check if code parameter exists (PKCE OAuth flow)
+        const searchParams = new URLSearchParams(location.search);
+        const code = searchParams.get('code');
+
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+          if (data.session?.user) {
+            await processUser(data.session.user.id);
+            return;
+          }
+        }
+
+        // 3. Check for active session (Implicit hash flow #access_token=...)
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+
+        if (session?.user) {
+          await processUser(session.user.id);
+          return;
+        }
+
+        // 4. Listen for auth state change event
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+          if (currentSession?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
+            authListener.subscription.unsubscribe();
+            await processUser(currentSession.user.id);
+          }
+        });
+
+        // 5. Timeout fallback
+        setTimeout(() => {
+          if (!isHandled) {
+            setErrorMessage('Authentication session expired or was cancelled. Please try signing in again.');
+          }
+        }, 5000);
+      } catch (err: any) {
+        console.error('OAuth callback processing error:', err);
+        setErrorMessage(err.message || 'Unable to complete Google Sign-In. Please try again.');
+      }
+    };
+
+    initCallback();
+  }, [location, navigate, switchRole]);
 
   return (
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 text-center">
       <div className="w-full max-w-sm bg-surface-container-lowest p-8 rounded-3xl border border-outline-variant/30 shadow-elevated flex flex-col items-center gap-4 animate-in fade-in zoom-in-95">
         <img alt="AgriSmart AI" className="h-12 w-auto object-contain mb-1" src={LOGO_URL} />
-        
+
         {errorMessage ? (
           <>
             <div className="w-12 h-12 rounded-full bg-error-container text-error flex items-center justify-center">
