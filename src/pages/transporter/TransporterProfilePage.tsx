@@ -6,7 +6,12 @@ import { TRANSPORTER_AVATAR } from '../../data/mockData';
 
 export const TransporterProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, switchRole } = useApp();
+  const { currentUser, switchRole, logout } = useApp();
+
+  const handleSignOut = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   return (
     <AppLayout title="Transporter Profile" showBack onBack={() => navigate('/transporter/dashboard')}>
@@ -123,7 +128,7 @@ export const TransporterProfilePage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => navigate('/login')}
+            onClick={handleSignOut}
             className="w-full h-touch-target-min bg-error-container/20 text-error rounded-2xl font-label-sm font-semibold hover:bg-error-container/30 flex items-center justify-center gap-2"
           >
             <span className="material-symbols-outlined text-[20px]">logout</span>

@@ -18,7 +18,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   rightAction
 }) => {
   const navigate = useNavigate();
-  const { currentRole, currentUser, switchRole } = useApp();
+  const { currentRole, currentUser, switchRole, logout } = useApp();
   const [showRoleMenu, setShowRoleMenu] = useState(false);
 
   const getRoleTitle = () => {
@@ -135,8 +135,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 </button>
                 <div className="border-t border-outline-variant/20 my-1"></div>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     setShowRoleMenu(false);
+                    await logout();
                     navigate('/login');
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-label-sm text-left text-error hover:bg-error-container/20 transition-colors"

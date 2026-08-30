@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import {
   UserRole,
   UserProfile,
@@ -28,7 +30,15 @@ interface AppContextType {
   currentRole: UserRole;
   currentUser: UserProfile;
   switchRole: (role: UserRole) => void;
-  
+
+  // Supabase Auth
+  supabaseUser: User | null;
+  supabaseSession: Session | null;
+  isAuthLoading: boolean;
+  loginWithGoogle: () => Promise<{ error: Error | null }>;
+  logout: () => Promise<void>;
+  assignRole: (role: UserRole) => Promise<boolean>;
+
   produceListings: ProduceListing[];
   addProduceListing: (listing: {
     cropName: string;
@@ -86,6 +96,10 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
+  const [supabaseSession, setSupabaseSession] = useState<Session | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+
   // Load persisted role
   const [currentRole, setCurrentRole] = useState<UserRole>(() => {
     const saved = localStorage.getItem('agrismart_role');
@@ -119,6 +133,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [activeOrder, setActiveOrder] = useState<OrderItem | null>(orders[0] || null);
 
+  // Supabase Auth Listener
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSupabaseSession(session);
+        setSupabaseUser(session?.user ?? null);
+
+        if (session?.user) {
+          // Fetch profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (profile?.role) {
+            setCurrentRole(profile.role as UserRole);
+            localStorage.setItem('agrismart_role', profile.role);
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase auth getSession warning:', err);
+      } finally {
+        setIsAuthLoading(false);
+      }
+    };
+
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSupabaseSession(session);
+      setSupabaseUser(session?.user ?? null);
+
+      if (session?.user) {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (profile?.role) {
+            setCurrentRole(profile.role as UserRole);
+            localStorage.setItem('agrismart_role', profile.role);
+          }
+        } catch (err) {
+          console.warn('Profile fetch warning:', err);
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   // Sync to local storage
   useEffect(() => {
     localStorage.setItem('agrismart_role', currentRole);
@@ -136,10 +207,90 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('agrismart_orders', JSON.stringify(orders));
   }, [orders]);
 
-  const currentUser = INITIAL_USERS[currentRole] || INITIAL_USERS.farmer;
+  // Compute currentUser (merging Supabase user metadata if available with mock persona data)
+  const baseUser = INITIAL_USERS[currentRole] || INITIAL_USERS.farmer;
+  const currentUser: UserProfile = supabaseUser
+    ? {
+        ...baseUser,
+        id: supabaseUser.id,
+        name:
+          supabaseUser.user_metadata?.full_name ||
+          supabaseUser.user_metadata?.name ||
+          baseUser.name,
+        email: supabaseUser.email || baseUser.email,
+        avatarUrl:
+          supabaseUser.user_metadata?.avatar_url ||
+          supabaseUser.user_metadata?.picture ||
+          baseUser.avatarUrl,
+        role: currentRole
+      }
+    : baseUser;
 
   const switchRole = (role: UserRole) => {
     setCurrentRole(role);
+  };
+
+  const loginWithGoogle = async () => {
+    try {
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          }
+        }
+      });
+      return { error };
+    } catch (err: any) {
+      return { error: err };
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn('Sign out error:', err);
+    } finally {
+      setSupabaseUser(null);
+      setSupabaseSession(null);
+      localStorage.removeItem('agrismart_role');
+      setCurrentRole('farmer');
+    }
+  };
+
+  const assignRole = async (role: UserRole): Promise<boolean> => {
+    setCurrentRole(role);
+    localStorage.setItem('agrismart_role', role);
+
+    if (supabaseUser) {
+      try {
+        const { error } = await supabase.from('profiles').upsert({
+          id: supabaseUser.id,
+          email: supabaseUser.email,
+          full_name:
+            supabaseUser.user_metadata?.full_name ||
+            supabaseUser.user_metadata?.name ||
+            currentUser.name,
+          avatar_url:
+            supabaseUser.user_metadata?.avatar_url ||
+            supabaseUser.user_metadata?.picture ||
+            currentUser.avatarUrl,
+          role,
+          updated_at: new Date().toISOString()
+        });
+
+        if (error) {
+          console.warn('Could not persist profile role to Supabase:', error);
+        }
+      } catch (err) {
+        console.warn('Upsert profile error:', err);
+      }
+    }
+    return true;
   };
 
   const addProduceListing = (data: {
@@ -479,6 +630,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentRole,
         currentUser,
         switchRole,
+        supabaseUser,
+        supabaseSession,
+        isAuthLoading,
+        loginWithGoogle,
+        logout,
+        assignRole,
         produceListings,
         addProduceListing,
         selectedProduce,
