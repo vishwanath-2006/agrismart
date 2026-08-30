@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useApp } from '../../context/AppContext';
 import { LOGO_URL } from '../../data/mockData';
@@ -7,22 +7,22 @@ import { UserRole } from '../../types';
 
 export const AuthCallbackPage: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { switchRole } = useApp();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const isProcessingRef = useRef(false);
 
   useEffect(() => {
-    let isHandled = false;
+    let isMounted = true;
 
     const parseErrorFromUrl = () => {
       // Check query params
-      const searchParams = new URLSearchParams(location.search);
+      const searchParams = new URLSearchParams(window.location.search);
       const queryError = searchParams.get('error_description') || searchParams.get('error');
       if (queryError) return queryError;
 
       // Check hash fragment
-      if (location.hash && location.hash.includes('error=')) {
-        const hashParams = new URLSearchParams(location.hash.substring(1));
+      if (window.location.hash && window.location.hash.includes('error=')) {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const hashError = hashParams.get('error_description') || hashParams.get('error');
         if (hashError) return decodeURIComponent(hashError.replace(/\+/g, ' '));
       }
@@ -30,9 +30,9 @@ export const AuthCallbackPage: React.FC = () => {
       return null;
     };
 
-    const processUser = async (userId: string) => {
-      if (isHandled) return;
-      isHandled = true;
+    const processAuthenticatedUser = async (userId: string) => {
+      if (isProcessingRef.current) return;
+      isProcessingRef.current = true;
 
       try {
         const { data: profile, error } = await supabase
@@ -42,8 +42,10 @@ export const AuthCallbackPage: React.FC = () => {
           .single();
 
         if (error && error.code !== 'PGRST116') {
-          console.warn('Profile lookup warning:', error);
+          console.warn('Profile query notice:', error.message);
         }
+
+        if (!isMounted) return;
 
         if (profile?.role) {
           const role = profile.role as UserRole;
@@ -56,64 +58,103 @@ export const AuthCallbackPage: React.FC = () => {
           navigate('/select-role', { replace: true });
         }
       } catch (err) {
-        console.warn('Process user warning:', err);
-        navigate('/select-role', { replace: true });
+        console.warn('Profile dispatch fallback:', err);
+        if (isMounted) {
+          navigate('/select-role', { replace: true });
+        }
       }
     };
 
-    const initCallback = async () => {
-      // 1. Check for URL error params
+    const handleCallback = async () => {
+      // 1. Check for explicit OAuth error in URL
       const urlError = parseErrorFromUrl();
       if (urlError) {
-        setErrorMessage(urlError);
+        if (isMounted) setErrorMessage(urlError);
         return;
       }
 
       try {
-        // 2. Check if code parameter exists (PKCE OAuth flow)
-        const searchParams = new URLSearchParams(location.search);
-        const code = searchParams.get('code');
+        // 2. Process Implicit Hash Flow (#access_token=...&refresh_token=...)
+        const rawHash = window.location.hash;
+        if (rawHash && rawHash.includes('access_token=')) {
+          const hashString = rawHash.startsWith('#') ? rawHash.substring(1) : rawHash;
+          const hashParams = new URLSearchParams(hashString);
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
 
+          if (accessToken) {
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || ''
+            });
+
+            if (error) {
+              console.error('setSession error from hash:', error);
+              throw error;
+            }
+
+            if (data.session?.user) {
+              await processAuthenticatedUser(data.session.user.id);
+              return;
+            }
+          }
+        }
+
+        // 3. Process PKCE Code Flow (?code=...)
+        const searchParams = new URLSearchParams(window.location.search);
+        const code = searchParams.get('code');
         if (code) {
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) throw error;
+          if (error) {
+            console.error('exchangeCodeForSession error:', error);
+            throw error;
+          }
+
           if (data.session?.user) {
-            await processUser(data.session.user.id);
+            await processAuthenticatedUser(data.session.user.id);
             return;
           }
         }
 
-        // 3. Check for active session (Implicit hash flow #access_token=...)
+        // 4. Check for already established session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
+        if (sessionError) {
+          console.warn('getSession error:', sessionError);
+        }
 
         if (session?.user) {
-          await processUser(session.user.id);
+          await processAuthenticatedUser(session.user.id);
           return;
         }
 
-        // 4. Listen for auth state change event
-        const { data: authListener } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+        // 5. Subscribe to onAuthStateChange in case session is established asynchronously
+        const { data: authSubscription } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
           if (currentSession?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
-            authListener.subscription.unsubscribe();
-            await processUser(currentSession.user.id);
+            authSubscription.subscription.unsubscribe();
+            await processAuthenticatedUser(currentSession.user.id);
           }
         });
 
-        // 5. Timeout fallback
+        // 6. Timeout safeguard
         setTimeout(() => {
-          if (!isHandled) {
+          if (isMounted && !isProcessingRef.current) {
             setErrorMessage('Authentication session expired or was cancelled. Please try signing in again.');
           }
-        }, 5000);
+        }, 6000);
       } catch (err: any) {
-        console.error('OAuth callback processing error:', err);
-        setErrorMessage(err.message || 'Unable to complete Google Sign-In. Please try again.');
+        console.error('OAuth callback execution error:', err);
+        if (isMounted) {
+          setErrorMessage(err.message || 'Unable to establish Google Sign-In session. Please try again.');
+        }
       }
     };
 
-    initCallback();
-  }, [location, navigate, switchRole]);
+    handleCallback();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate, switchRole]);
 
   return (
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 text-center">
