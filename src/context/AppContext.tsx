@@ -33,6 +33,12 @@ import {
   claimTransportJobInSupabase,
   updateOrderStatusInSupabase
 } from '../services/orderSyncService';
+import {
+  fetchMandiPricesFromSupabase,
+  fetchMarketComparisonsFromSupabase,
+  fetchPriceHistoryFromSupabase,
+  triggerMandiPriceSync
+} from '../services/mandiPriceService';
 
 interface AppContextType {
   currentRole: UserRole;
@@ -131,10 +137,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [selectedProduce, setSelectedProduce] = useState<ProduceListing | null>(produceListings[0]);
-  const [marketComparisons] = useState<MarketComparisonItem[]>(MOCK_MARKET_COMPARISONS);
+  const [marketComparisons, setMarketComparisons] = useState<MarketComparisonItem[]>(MOCK_MARKET_COMPARISONS);
   const [selectedMarket, setSelectedMarket] = useState<MarketComparisonItem | null>(MOCK_MARKET_COMPARISONS[0]);
-  const [mandiPrices] = useState<MandiPriceItem[]>(MOCK_MANDI_PRICES);
-  const [priceHistory] = useState<PriceHistoryPoint[]>(MOCK_PRICE_HISTORY_POINTS);
+  const [mandiPrices, setMandiPrices] = useState<MandiPriceItem[]>(MOCK_MANDI_PRICES);
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryPoint[]>(MOCK_PRICE_HISTORY_POINTS);
   const [transporters] = useState<TransporterOption[]>(MOCK_TRANSPORTERS);
   const [selectedTransporter, setSelectedTransporter] = useState<TransporterOption | null>(MOCK_TRANSPORTERS[0]);
 
@@ -472,6 +478,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       subscription.unsubscribe();
     };
   }, []);
+
+  // Synchronize and load real Government Mandi Prices from Supabase
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadMandiData = async () => {
+      try {
+        const prices = await fetchMandiPricesFromSupabase();
+        if (isMounted && prices && prices.length > 0) {
+          setMandiPrices(prices);
+        }
+
+        const crop = selectedProduce?.cropName || 'Tomato';
+        const comparisons = await fetchMarketComparisonsFromSupabase(crop);
+        if (isMounted && comparisons && comparisons.length > 0) {
+          setMarketComparisons(comparisons);
+          if (!selectedMarket || !comparisons.some(c => c.id === selectedMarket.id)) {
+            setSelectedMarket(comparisons[0]);
+          }
+        }
+
+        const history = await fetchPriceHistoryFromSupabase(crop);
+        if (isMounted && history && history.length > 0) {
+          setPriceHistory(history);
+        }
+      } catch (err) {
+        console.warn('Mandi data load notice:', err);
+      }
+    };
+
+    loadMandiData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedProduce?.cropName]);
 
   const saveFarmerProfile = async (data: Partial<FarmerProfileData>): Promise<boolean> => {
     const updated: FarmerProfileData = { ...farmerProfile, ...data };

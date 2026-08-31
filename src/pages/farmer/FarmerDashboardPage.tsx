@@ -9,7 +9,12 @@ import { FARMER_AVATAR } from '../../data/mockData';
 
 export const FarmerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { produceListings, priceHistory, setSelectedProduce, farmerProfile, activeOrder } = useApp();
+  const { produceListings, priceHistory, setSelectedProduce, farmerProfile, activeOrder, mandiPrices } = useApp();
+
+  const tomatoMandi = mandiPrices.find(m => m.cropName.toLowerCase().includes('tomato')) || mandiPrices[0];
+  const tomatoPrice = tomatoMandi ? `₹${tomatoMandi.modalPrice}` : '₹31';
+  const topMarket = mandiPrices.reduce((prev, curr) => (curr.modalPrice > prev.modalPrice ? curr : prev), mandiPrices[0]);
+  const topMarketName = topMarket ? topMarket.mandiName.split(',')[0].replace('APMC Yard ', '').replace(' Mandi', '') : 'KR Market';
 
   return (
     <AppLayout title="Farmer Dashboard">
@@ -77,7 +82,7 @@ export const FarmerDashboardPage: React.FC = () => {
           />
           <KPIStatCard
             label="Tomato Avg"
-            value="₹30"
+            value={tomatoPrice}
             subValue="/kg"
             trendText="8%"
             isPositiveTrend={true}
@@ -87,7 +92,7 @@ export const FarmerDashboardPage: React.FC = () => {
           />
           <KPIStatCard
             label="Hot Market"
-            value="KR Market"
+            value={topMarketName}
             icon="local_fire_department"
             colorScheme="highlight"
             onClick={() => navigate('/farmer/market-comparison')}

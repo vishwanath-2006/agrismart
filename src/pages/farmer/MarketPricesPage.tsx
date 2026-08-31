@@ -101,14 +101,17 @@ export const MarketPricesPage: React.FC = () => {
           ))}
         </div>
 
-        {/* Live Mandi Rates Header */}
+        {/* Latest Reported Mandi Rates Header */}
         <div className="flex items-center justify-between pt-1">
-          <h3 className="font-title-md text-title-md font-bold text-on-surface flex items-center gap-1.5">
-            <span>Live APMC Mandi Rates</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-tertiary animate-pulse" />
-          </h3>
+          <div>
+            <h3 className="font-title-md text-title-md font-bold text-on-surface flex items-center gap-1.5">
+              <span>Latest Reported Mandi Rates</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-tertiary" />
+            </h3>
+            <p className="text-[11px] text-on-surface-variant font-medium">Official Government data.gov.in dataset</p>
+          </div>
           <span className="text-[12px] text-on-surface-variant font-medium">
-            {filteredPrices.length} live commodities
+            {filteredPrices.length} commodities
           </span>
         </div>
 

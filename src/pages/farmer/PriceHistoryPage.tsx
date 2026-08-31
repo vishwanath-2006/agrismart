@@ -11,6 +11,8 @@ export const PriceHistoryPage: React.FC = () => {
   const [timeframe, setTimeframe] = useState<'7D' | '1M' | '3M' | 'Forecast'>('Forecast');
 
   const cropTitle = selectedProduce?.cropName || 'Tomato (Hybrid)';
+  const latestHistorical = priceHistory.filter(p => !p.isForecast).slice(-1)[0];
+  const currentBenchmarkPrice = latestHistorical ? latestHistorical.price : 31.0;
 
   return (
     <AppLayout title="Price History & Forecast" showBack onBack={() => navigate('/farmer/market-prices')}>
@@ -22,11 +24,11 @@ export const PriceHistoryPage: React.FC = () => {
               Commodity Focus
             </span>
             <h2 className="text-title-md font-title-md font-bold text-on-surface mt-1.5">{cropTitle}</h2>
-            <p className="text-[13px] text-on-surface-variant">Benchmark Mandi: KR Market, Bangalore</p>
+            <p className="text-[13px] text-on-surface-variant">Benchmark Mandi: KR Market, Bangalore (data.gov.in)</p>
           </div>
           <div className="text-right">
-            <span className="text-headline-lg-mobile font-headline-lg-mobile font-bold text-primary">₹31.00</span>
-            <span className="text-label-sm font-normal text-on-surface-variant block">Current Avg / kg</span>
+            <span className="text-headline-lg-mobile font-headline-lg-mobile font-bold text-primary">₹{currentBenchmarkPrice.toFixed(2)}</span>
+            <span className="text-label-sm font-normal text-on-surface-variant block">Latest Reported / kg</span>
           </div>
         </div>
 
