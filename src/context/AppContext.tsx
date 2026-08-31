@@ -28,6 +28,11 @@ import {
   FARMER_AVATAR,
   TOMATO_IMG
 } from '../data/mockData';
+import {
+  syncOrderToSupabase,
+  claimTransportJobInSupabase,
+  updateOrderStatusInSupabase
+} from '../services/orderSyncService';
 
 interface AppContextType {
   currentRole: UserRole;
@@ -957,6 +962,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setOrders(prev => [newOrder, ...prev]);
     setActiveOrder(newOrder);
+
+    // Sync authoritative order record to Supabase
+    syncOrderToSupabase(newOrder, supabaseUser?.id).catch(err =>
+      console.warn('Background sync order error:', err)
+    );
+
     return newOrder;
   };
 
@@ -992,10 +1003,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updated;
       })
     );
+
+    // Update status in Supabase backend
+    updateOrderStatusInSupabase(orderId, newStatus).catch(err =>
+      console.warn('Background update order status error:', err)
+    );
   };
 
   const acceptTransportJob = (orderId: string) => {
     updateOrderStatus(orderId, 'TRANSPORTER_ASSIGNED');
+    // Atomically claim in Supabase
+    claimTransportJobInSupabase(orderId).catch(err =>
+      console.warn('Background claim transport job error:', err)
+    );
   };
 
   const startTrip = (orderId: string) => {
@@ -1034,6 +1054,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         return updated;
       })
+    );
+
+    // Mark completed in Supabase
+    updateOrderStatusInSupabase(orderId, 'COMPLETED').catch(err =>
+      console.warn('Background complete order status error:', err)
     );
   };
 
