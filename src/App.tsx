@@ -62,6 +62,7 @@ export const App: React.FC = () => {
           <Route path="/farmer/market-prices" element={<MarketPricesPage />} />
           <Route path="/farmer/price-history" element={<PriceHistoryPage />} />
           <Route path="/farmer/add-produce" element={<AddProducePage />} />
+          <Route path="/farmer/live-tracking" element={<LiveTrackingPage />} />
           <Route path="/farmer/profile" element={<FarmerProfilePage />} />
 
           {/* Buyer Routes */}

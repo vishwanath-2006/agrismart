@@ -9,7 +9,7 @@ import { FARMER_AVATAR } from '../../data/mockData';
 
 export const FarmerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { produceListings, priceHistory, setSelectedProduce, farmerProfile } = useApp();
+  const { produceListings, priceHistory, setSelectedProduce, farmerProfile, activeOrder } = useApp();
 
   return (
     <AppLayout title="Farmer Dashboard">
@@ -112,6 +112,32 @@ export const FarmerDashboardPage: React.FC = () => {
             subtitle="Last 7 days (₹/kg) • Tap for detailed forecast"
           />
         </div>
+
+        {/* Active Dispatch Live Tracking Card if shipment active */}
+        {activeOrder && (
+          <div
+            onClick={() => navigate('/farmer/live-tracking')}
+            className="bg-surface-container-lowest rounded-2xl p-4 border-2 border-primary/30 shadow-card flex items-center justify-between gap-3 cursor-pointer hover:border-primary transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary-fixed/40 text-primary flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[22px]">local_shipping</span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  <h4 className="font-label-sm font-bold text-on-surface">
+                    Active Dispatch • Order #{activeOrder.orderNumber}
+                  </h4>
+                </div>
+                <p className="text-[12px] text-on-surface-variant mt-0.5">
+                  {activeOrder.cropName} ({activeOrder.quantityKg}kg) • Live GPS Tracking
+                </p>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-primary text-[20px]">arrow_forward</span>
+          </div>
+        )}
 
         {/* Quick Action Grid */}
         <div className="grid grid-cols-2 gap-3">

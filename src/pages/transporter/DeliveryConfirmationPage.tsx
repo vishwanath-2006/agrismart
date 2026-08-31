@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { AppLayout } from '../../components/layout/AppLayout';
 
+import { stopOrderTracking } from '../../services/liveTrackingService';
+
 export const DeliveryConfirmationPage: React.FC = () => {
   const navigate = useNavigate();
   const { activeOrder, orders, completeDelivery, currentRole } = useApp();
@@ -23,6 +25,7 @@ export const DeliveryConfirmationPage: React.FC = () => {
       gradeConfirmed: 'Grade A Export Quality',
       signedBy
     });
+    stopOrderTracking(order.id);
     setIsCompleted(true);
   };
 

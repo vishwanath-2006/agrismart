@@ -8,7 +8,7 @@ import { ProduceListing } from '../../types';
 
 export const BuyerMarketplacePage: React.FC = () => {
   const navigate = useNavigate();
-  const { produceListings, setSelectedProduce, startNegotiationForProduce, buyerProfile } = useApp();
+  const { produceListings, setSelectedProduce, startNegotiationForProduce, buyerProfile, activeOrder } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [inspectProduce, setInspectProduce] = useState<ProduceListing | null>(null);
@@ -107,6 +107,32 @@ export const BuyerMarketplacePage: React.FC = () => {
             handleNegotiate(tomato);
           }}
         />
+
+        {/* Active In-Transit Shipment Banner */}
+        {activeOrder && (
+          <div
+            onClick={() => navigate('/buyer/live-tracking')}
+            className="bg-surface-container-lowest rounded-2xl p-4 border-2 border-secondary/30 shadow-card flex items-center justify-between gap-3 cursor-pointer hover:border-secondary transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-secondary-fixed/40 text-secondary flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[22px]">local_shipping</span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
+                  <h4 className="font-label-sm font-bold text-on-surface">
+                    Incoming Delivery • Order #{activeOrder.orderNumber}
+                  </h4>
+                </div>
+                <p className="text-[12px] text-on-surface-variant mt-0.5">
+                  {activeOrder.cropName} ({activeOrder.quantityKg}kg) • Live Transporter GPS
+                </p>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-secondary text-[20px]">arrow_forward</span>
+          </div>
+        )}
 
         {/* Available Harvests Header */}
         <div className="flex items-center justify-between pt-1">

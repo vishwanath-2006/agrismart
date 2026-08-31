@@ -15,6 +15,7 @@ export const DesktopSidebar: React.FC = () => {
     { label: 'Mandi Market Prices', path: '/farmer/market-prices', icon: 'trending_up' },
     { label: 'Price History & Forecast', path: '/farmer/price-history', icon: 'insights' },
     { label: 'List / Add Produce', path: '/farmer/add-produce', icon: 'add_circle' },
+    { label: 'Live Dispatch Tracking', path: '/farmer/live-tracking', icon: 'navigation' },
     { label: 'Farmer Profile & Settings', path: '/farmer/profile', icon: 'account_circle' }
   ];
 

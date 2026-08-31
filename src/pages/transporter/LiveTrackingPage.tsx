@@ -1,32 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { LiveMapPreview } from '../../components/common/LiveMapPreview';
+import { useLiveTracking } from '../../hooks/useLiveTracking';
 
 export const LiveTrackingPage: React.FC = () => {
   const navigate = useNavigate();
   const { activeOrder, orders, currentRole } = useApp();
   const order = activeOrder || orders[0];
 
-  const [progress, setProgress] = useState(65);
-  const [speed, setSpeed] = useState(48);
+  const isDriverRole = currentRole === 'transporter';
 
-  // Deterministic live GPS progression simulation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 95) return 95;
-        return prev + 1;
-      });
-      setSpeed(prev => Math.floor(45 + Math.random() * 8));
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
+  // Origin Farm and Destination Warehouse coordinates (Mysore & Bangalore APMC depot)
+  const originCoords = { lat: 12.2958, lng: 76.6394 };
+  const destinationCoords = { lat: 12.9654, lng: 77.5786 };
+
+  const {
+    latitude,
+    longitude,
+    accuracy,
+    speedKmh,
+    gpsStatus,
+    errorMessage,
+    lastUpdated,
+    distanceRemainingKm,
+    startDriverTracking
+  } = useLiveTracking({
+    orderId: order.id,
+    isDriver: isDriverRole,
+    destinationCoords,
+    originCoords
+  });
 
   return (
     <AppLayout
-      title="Live Shipment Tracking"
+      title={
+        isDriverRole
+          ? 'Live Dispatch Telemetry'
+          : currentRole === 'buyer'
+          ? 'Buyer Live Shipment Tracking'
+          : 'Farmer Live Dispatch Tracking'
+      }
       showBack
       onBack={() => {
         if (currentRole === 'transporter') navigate('/transporter/dashboard');
@@ -35,19 +50,51 @@ export const LiveTrackingPage: React.FC = () => {
       }}
     >
       <div className="flex flex-col w-full gap-4 pb-6">
-        {/* Live Vector Map with moving truck */}
+        {/* Permission Denied / Error Alert Banner */}
+        {gpsStatus === 'PERMISSION_DENIED' && (
+          <div className="p-3.5 bg-error-container/30 text-error rounded-2xl border border-error/20 text-label-sm font-semibold flex items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-center gap-2.5">
+              <span className="material-symbols-outlined text-[20px]">location_disabled</span>
+              <span>{errorMessage || 'Location permission is required for live tracking.'}</span>
+            </div>
+            {isDriverRole && (
+              <button
+                type="button"
+                onClick={startDriverTracking}
+                className="px-3 py-1 bg-error text-on-error rounded-xl text-[12px] font-bold shrink-0 hover:bg-error/90"
+              >
+                Enable GPS
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Real Live Leaflet Map */}
         <div className="mt-1">
           <LiveMapPreview
             origin={order.farmer.location}
             destination={order.buyer.warehouseAddress}
-            progressPercent={progress}
-            speedKmh={speed}
-            currentLocationDesc="SH-17 near Ramanagara Checkpoint"
+            driverLat={latitude}
+            driverLng={longitude}
+            originLat={originCoords.lat}
+            originLng={originCoords.lng}
+            destLat={destinationCoords.lat}
+            destLng={destinationCoords.lng}
+            speedKmh={speedKmh}
+            accuracy={accuracy}
+            lastUpdated={lastUpdated}
+            gpsStatus={gpsStatus}
+            distanceRemainingKm={distanceRemainingKm}
+            currentLocationDesc={
+              latitude && longitude
+                ? `Live GPS: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`
+                : 'Connecting to Realtime GPS Broadcast...'
+            }
             isOptimizedRoute={true}
           />
         </div>
 
-        {/* Cold-Chain Telemetry Bar */}
+        {/* Real Telemetry Bar */}
         <div className="grid grid-cols-3 gap-2.5">
           <div className="bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 shadow-card text-center">
             <span className="text-[11px] text-on-surface-variant font-medium block">Reefer Temp</span>
@@ -55,25 +102,33 @@ export const LiveTrackingPage: React.FC = () => {
               <span className="material-symbols-outlined text-primary text-[16px]">device_thermostat</span>
               <span className="text-body-md font-bold text-primary">17.8°C</span>
             </div>
-            <span className="text-[10px] text-tertiary font-semibold">Optimal</span>
+            <span className="text-[10px] text-tertiary font-semibold">Sensor Active</span>
           </div>
 
           <div className="bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 shadow-card text-center">
             <span className="text-[11px] text-on-surface-variant font-medium block">Current Speed</span>
             <div className="flex items-center justify-center gap-1 mt-0.5">
               <span className="material-symbols-outlined text-secondary text-[16px]">speed</span>
-              <span className="text-body-md font-bold text-secondary">{speed} km/h</span>
+              <span className="text-body-md font-bold text-secondary">
+                {speedKmh !== null && speedKmh !== undefined ? `${speedKmh} km/h` : 'Unavailable'}
+              </span>
             </div>
-            <span className="text-[10px] text-on-surface-variant">Smooth Flow</span>
+            <span className="text-[10px] text-on-surface-variant">
+              {speedKmh !== null && speedKmh > 0 ? 'In Motion' : 'Stationary / Idle'}
+            </span>
           </div>
 
           <div className="bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 shadow-card text-center">
-            <span className="text-[11px] text-on-surface-variant font-medium block">Est. Arrival</span>
+            <span className="text-[11px] text-on-surface-variant font-medium block">Distance Left</span>
             <div className="flex items-center justify-center gap-1 mt-0.5">
-              <span className="material-symbols-outlined text-tertiary text-[16px]">schedule</span>
-              <span className="text-body-md font-bold text-on-surface">3:45 PM</span>
+              <span className="material-symbols-outlined text-tertiary text-[16px]">navigation</span>
+              <span className="text-body-md font-bold text-on-surface">
+                {distanceRemainingKm !== null && distanceRemainingKm !== undefined
+                  ? `~${distanceRemainingKm} km`
+                  : 'Calculating'}
+              </span>
             </div>
-            <span className="text-[10px] text-tertiary font-semibold">On Time</span>
+            <span className="text-[10px] text-tertiary font-semibold">Direct Line</span>
           </div>
         </div>
 
@@ -87,10 +142,10 @@ export const LiveTrackingPage: React.FC = () => {
             />
             <div>
               <h4 className="font-label-sm font-bold text-on-surface">
-                {order.transporter?.name || 'Marcus Vance'}
+                {order.transporter?.name || 'Driver Logistics'}
               </h4>
               <p className="text-[12px] text-on-surface-variant">
-                {order.transporter?.vehicleType || 'Tata 407 Cold Chain'} ({order.transporter?.vehiclePlate || 'KA-09-E-4421'})
+                {order.transporter?.vehicleType || '4-Wheeler Tempo Reefer'} ({order.transporter?.vehiclePlate || 'KA-09-E-4421'})
               </p>
             </div>
           </div>
@@ -104,7 +159,7 @@ export const LiveTrackingPage: React.FC = () => {
               <span className="material-symbols-outlined text-[20px]">call</span>
             </button>
             <button
-              onClick={() => alert('Message dispatch: "Driver ETA on track at 3:45 PM"')}
+              onClick={() => alert(`Messaging dispatch for Order #${order.orderNumber}`)}
               className="w-10 h-10 rounded-xl bg-surface-container text-on-surface-variant flex items-center justify-center hover:bg-surface-container-high transition-colors"
               aria-label="Message driver"
             >
@@ -164,15 +219,28 @@ export const LiveTrackingPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Action Button: Confirm Delivery */}
+        {/* Action Button: Driver Arrived Confirmation (only for transporter) or Dashboard link for Buyer/Farmer */}
         <div className="pt-2">
-          <button
-            onClick={() => navigate('/transporter/delivery-confirmation')}
-            className="w-full h-touch-target-min bg-primary text-on-primary rounded-2xl font-title-md text-title-md font-bold shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-          >
-            <span>Arrived at Warehouse • Confirm Delivery</span>
-            <span className="material-symbols-outlined text-[20px]">task_alt</span>
-          </button>
+          {isDriverRole ? (
+            <button
+              onClick={() => navigate('/transporter/delivery-confirmation')}
+              className="w-full h-touch-target-min bg-primary text-on-primary rounded-2xl font-title-md text-title-md font-bold shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            >
+              <span>Arrived at Warehouse • Confirm Delivery</span>
+              <span className="material-symbols-outlined text-[20px]">task_alt</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                if (currentRole === 'buyer') navigate('/buyer/marketplace');
+                else navigate('/farmer/dashboard');
+              }}
+              className="w-full h-touch-target-min bg-surface-container text-on-surface rounded-2xl font-label-sm font-semibold hover:bg-surface-container-high active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">space_dashboard</span>
+              <span>Back to Dashboard</span>
+            </button>
+          )}
         </div>
       </div>
     </AppLayout>
