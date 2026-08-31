@@ -86,6 +86,7 @@ interface AppContextType {
 
   mandiPrices: MandiPriceItem[];
   priceHistory: PriceHistoryPoint[];
+  setPriceHistory: (history: PriceHistoryPoint[]) => void;
 
   negotiations: NegotiationDeal[];
   currentNegotiation: NegotiationDeal | null;
@@ -499,9 +500,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         }
 
-        const history = await fetchPriceHistoryFromSupabase(crop);
-        if (isMounted && history && history.length > 0) {
-          setPriceHistory(history);
+        const history = await fetchPriceHistoryFromSupabase(crop, selectedMarket?.marketName);
+        if (isMounted) {
+          setPriceHistory(history || []);
         }
       } catch (err) {
         console.warn('Mandi data load notice:', err);
@@ -1133,6 +1134,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedMarket,
         mandiPrices,
         priceHistory,
+        setPriceHistory,
         negotiations,
         currentNegotiation,
         setCurrentNegotiation,

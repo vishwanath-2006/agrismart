@@ -62,7 +62,9 @@ export const PriceSplineChart: React.FC<PriceSplineChartProps> = ({
               1 Government Observation Available
             </span>
             <p className="text-title-md font-bold text-on-surface mt-0.5">{single.date}</p>
-            <p className="text-[11px] text-on-surface-variant">Source: data.gov.in AGMARKNET</p>
+            <p className="text-[11px] text-on-surface-variant">
+              {single.market ? `${single.market} • ` : ''}Source: data.gov.in AGMARKNET
+            </p>
           </div>
           <div className="text-right">
             <span className="text-headline-lg-mobile font-headline-lg-mobile font-bold text-primary">₹{single.price.toFixed(2)}</span>
@@ -130,11 +132,11 @@ export const PriceSplineChart: React.FC<PriceSplineChartProps> = ({
       </div>
 
       {hoveredPoint && (
-        <div className="mb-2 px-3 py-1.5 bg-primary-fixed/30 text-on-primary-fixed rounded-lg text-label-sm flex items-center justify-between">
-          <span className="font-medium">
-            {hoveredPoint.date} {hoveredPoint.isForecast ? '(AI Forecast)' : '(Govt Observation)'}
+        <div className="mb-2 px-3 py-1.5 bg-primary-fixed/30 text-on-primary-fixed rounded-lg text-label-sm flex items-center justify-between animate-in fade-in duration-150">
+          <span className="font-medium text-[12px]">
+            {hoveredPoint.date} • {hoveredPoint.isForecast ? 'AI Forecast' : hoveredPoint.source === 'benchmark_fallback' ? 'Benchmark' : 'Govt Observation'}
           </span>
-          <span className="font-bold text-primary">₹{hoveredPoint.price.toFixed(1)}/kg</span>
+          <span className="font-bold text-primary text-[13px]">₹{hoveredPoint.price.toFixed(2)}/kg</span>
         </div>
       )}
 
@@ -187,7 +189,12 @@ export const PriceSplineChart: React.FC<PriceSplineChartProps> = ({
 
           {/* Data Points */}
           {points.map((pt, i) => (
-            <g key={i} className="cursor-pointer" onMouseEnter={() => setHoveredPoint(pt)}>
+            <g
+              key={i}
+              className="cursor-pointer"
+              onMouseEnter={() => setHoveredPoint(pt)}
+              onClick={() => setHoveredPoint(pt)}
+            >
               <circle
                 cx={pt.x}
                 cy={pt.y}

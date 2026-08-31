@@ -237,7 +237,7 @@ export async function fetchPriceHistoryFromSupabase(
 
     let query = supabase
       .from('market_prices')
-      .select('arrival_date, modal_price_per_kg, market, commodity, variety, fetched_at')
+      .select('arrival_date, modal_price_per_kg, market, commodity, variety, fetched_at, source')
       .ilike('commodity', `%${commodityKeyword}%`);
 
     if (mandiName) {
@@ -259,7 +259,7 @@ export async function fetchPriceHistoryFromSupabase(
     }
 
     // Group actual records by arrival_date chronologically
-    const dateMap = new Map<string, { totalModal: number; count: number; dateStr: string; timestamp: number }>();
+    const dateMap = new Map<string, { totalModal: number; count: number; dateStr: string; timestamp: number; market: string; commodity: string; source: string }>();
 
     for (const row of filteredData) {
       const modalPrice = Number(row.modal_price_per_kg);
@@ -270,7 +270,15 @@ export async function fetchPriceHistoryFromSupabase(
       const dateKey = row.arrival_date || dateFormatted;
 
       if (!dateMap.has(dateKey)) {
-        dateMap.set(dateKey, { totalModal: modalPrice, count: 1, dateStr: dateFormatted, timestamp: ts });
+        dateMap.set(dateKey, {
+          totalModal: modalPrice,
+          count: 1,
+          dateStr: dateFormatted,
+          timestamp: ts,
+          market: row.market || 'APMC Mandi',
+          commodity: row.commodity || cropName,
+          source: row.source || 'data.gov.in'
+        });
       } else {
         const existing = dateMap.get(dateKey)!;
         existing.totalModal += modalPrice;
@@ -284,7 +292,11 @@ export async function fetchPriceHistoryFromSupabase(
     const actualHistory: PriceHistoryPoint[] = sortedEntries.map(entry => ({
       date: entry.dateStr,
       price: Math.round((entry.totalModal / entry.count) * 100) / 100,
-      isForecast: false
+      isForecast: false,
+      timestamp: entry.timestamp,
+      market: entry.market,
+      commodity: entry.commodity,
+      source: entry.source
     }));
 
     return actualHistory;

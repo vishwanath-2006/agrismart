@@ -1,19 +1,44 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { PriceSplineChart } from '../../components/common/PriceSplineChart';
 import { AIInsightBanner } from '../../components/common/AIInsightBanner';
-import { generateAiForecastPoints } from '../../services/mandiPriceService';
+import { fetchPriceHistoryFromSupabase, generateAiForecastPoints } from '../../services/mandiPriceService';
 import { PriceHistoryPoint } from '../../types';
 
 export const PriceHistoryPage: React.FC = () => {
   const navigate = useNavigate();
-  const { priceHistory, selectedProduce, selectedMarket } = useApp();
+  const { priceHistory, setPriceHistory, selectedProduce, selectedMarket } = useApp();
   const [timeframe, setTimeframe] = useState<'7D' | '1M' | '3M' | 'Forecast'>('Forecast');
+  const [isLoading, setIsLoading] = useState(false);
 
   const cropTitle = selectedProduce?.cropName || 'Tomato (Hybrid)';
   const benchmarkMandiName = selectedMarket?.marketName || 'KR Market, Bangalore';
+
+  // Reactively fetch historical data when commodity or benchmark market changes
+  useEffect(() => {
+    let isMounted = true;
+    const loadHistory = async () => {
+      setIsLoading(true);
+      try {
+        const history = await fetchPriceHistoryFromSupabase(cropTitle, selectedMarket?.marketName);
+        if (isMounted) {
+          setPriceHistory(history);
+        }
+      } catch (err) {
+        console.warn('Error loading price history for commodity:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    loadHistory();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [cropTitle, selectedMarket?.marketName, setPriceHistory]);
   
   // Strict separation: only authentic Government observations
   const realHistoricalPoints = useMemo(
@@ -24,16 +49,28 @@ export const PriceHistoryPage: React.FC = () => {
   const latestHistorical = realHistoricalPoints[realHistoricalPoints.length - 1];
   const currentBenchmarkPrice = latestHistorical ? latestHistorical.price : 31.0;
 
-  // Filter based on selected timeframe
+  // Filter based on selected timeframe using real dates
   const displayData: PriceHistoryPoint[] = useMemo(() => {
+    if (realHistoricalPoints.length === 0) return [];
+
     if (timeframe === 'Forecast') {
       const forecastPoints = generateAiForecastPoints(currentBenchmarkPrice, latestHistorical?.date);
       return [...realHistoricalPoints, ...forecastPoints];
     }
     
-    // For 7D, 1M, 3M: return ONLY real historical points without forecast or interpolation
-    const sliceCount = timeframe === '7D' ? 7 : timeframe === '1M' ? 30 : 90;
-    return realHistoricalPoints.slice(-sliceCount);
+    // For 7D, 1M, 3M: filter strictly based on observation timestamps
+    const latestTs = latestHistorical?.timestamp || Date.now();
+    const windowDays = timeframe === '7D' ? 7 : timeframe === '1M' ? 30 : 90;
+    const cutoffTs = latestTs - windowDays * 24 * 60 * 60 * 1000;
+
+    const filtered = realHistoricalPoints.filter(p => {
+      if (p.timestamp) {
+        return p.timestamp >= cutoffTs;
+      }
+      return true;
+    });
+
+    return filtered;
   }, [realHistoricalPoints, currentBenchmarkPrice, timeframe, latestHistorical]);
 
   return (
@@ -78,18 +115,25 @@ export const PriceHistoryPage: React.FC = () => {
           ))}
         </div>
 
-        {/* Spline Chart with Forecast */}
-        <PriceSplineChart
-          data={displayData}
-          title={timeframe === 'Forecast' ? 'Price Movement & 3-Day Forecast' : 'Historical Price Trend'}
-          subtitle={
-            timeframe === 'Forecast'
-              ? 'Government reported observations + AI trajectory'
-              : 'Government reported data (Source: data.gov.in)'
-          }
-          cropName={cropTitle}
-          showForecast={timeframe === 'Forecast'}
-        />
+        {/* Loading Spinner or Spline Chart */}
+        {isLoading ? (
+          <div className="bg-surface-container-lowest rounded-2xl p-8 shadow-card border border-outline-variant/20 flex flex-col items-center justify-center gap-2">
+            <span className="material-symbols-outlined text-[32px] text-primary animate-spin">progress_activity</span>
+            <p className="font-label-sm font-semibold text-on-surface">Loading real APMC observations...</p>
+          </div>
+        ) : (
+          <PriceSplineChart
+            data={displayData}
+            title={timeframe === 'Forecast' ? 'Price Movement & 3-Day Forecast' : 'Historical Price Trend'}
+            subtitle={
+              timeframe === 'Forecast'
+                ? 'Government reported observations + AI trajectory'
+                : 'Government reported data (Source: data.gov.in)'
+            }
+            cropName={cropTitle}
+            showForecast={timeframe === 'Forecast'}
+          />
+        )}
 
         {/* AI Forecast Intelligence Banner */}
         <AIInsightBanner

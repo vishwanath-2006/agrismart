@@ -83,6 +83,10 @@ export interface PriceHistoryPoint {
   date: string;
   price: number;
   isForecast?: boolean;
+  timestamp?: number;
+  market?: string;
+  commodity?: string;
+  source?: string;
 }
 
 export interface NegotiationDeal {
