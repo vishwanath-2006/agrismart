@@ -234,7 +234,7 @@ Deno.serve(async (req: Request) => {
           modal_price_per_kg: modalKg,
           commodity_category: categorizeCommodity(rec.commodity),
           arrivals_tonnes: parseFloat(rec.arrivals) || 25.0,
-          source: "data.gov.in",
+          source: isLiveGovApi ? "data.gov.in" : "benchmark_fallback",
           fetched_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };

@@ -9,10 +9,11 @@ import { PriceHistoryPoint } from '../../types';
 
 export const PriceHistoryPage: React.FC = () => {
   const navigate = useNavigate();
-  const { priceHistory, selectedProduce } = useApp();
+  const { priceHistory, selectedProduce, selectedMarket } = useApp();
   const [timeframe, setTimeframe] = useState<'7D' | '1M' | '3M' | 'Forecast'>('Forecast');
 
   const cropTitle = selectedProduce?.cropName || 'Tomato (Hybrid)';
+  const benchmarkMandiName = selectedMarket?.marketName || 'KR Market, Bangalore';
   
   // Strict separation: only authentic Government observations
   const realHistoricalPoints = useMemo(
@@ -26,14 +27,14 @@ export const PriceHistoryPage: React.FC = () => {
   // Filter based on selected timeframe
   const displayData: PriceHistoryPoint[] = useMemo(() => {
     if (timeframe === 'Forecast') {
-      const forecastPoints = generateAiForecastPoints(currentBenchmarkPrice);
+      const forecastPoints = generateAiForecastPoints(currentBenchmarkPrice, latestHistorical?.date);
       return [...realHistoricalPoints, ...forecastPoints];
     }
     
     // For 7D, 1M, 3M: return ONLY real historical points without forecast or interpolation
     const sliceCount = timeframe === '7D' ? 7 : timeframe === '1M' ? 30 : 90;
     return realHistoricalPoints.slice(-sliceCount);
-  }, [realHistoricalPoints, currentBenchmarkPrice, timeframe]);
+  }, [realHistoricalPoints, currentBenchmarkPrice, timeframe, latestHistorical]);
 
   return (
     <AppLayout title="Price History & Forecast" showBack onBack={() => navigate('/farmer/market-prices')}>
@@ -52,7 +53,7 @@ export const PriceHistoryPage: React.FC = () => {
               </span>
             </div>
             <h2 className="text-title-md font-title-md font-bold text-on-surface mt-1.5">{cropTitle}</h2>
-            <p className="text-[13px] text-on-surface-variant">Benchmark Mandi: KR Market, Bangalore (data.gov.in)</p>
+            <p className="text-[13px] text-on-surface-variant">Mandi: {benchmarkMandiName} (data.gov.in)</p>
           </div>
           <div className="text-right">
             <span className="text-headline-lg-mobile font-headline-lg-mobile font-bold text-primary">₹{currentBenchmarkPrice.toFixed(2)}</span>

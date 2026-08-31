@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { AppLayout } from '../../components/layout/AppLayout';
+import { formatArrivalDate } from '../../services/mandiPriceService';
 
 export const MarketPricesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -43,23 +44,6 @@ export const MarketPricesPage: React.FC = () => {
     const matchedProduce = produceListings.find(p => p.cropName.toLowerCase().includes(item.cropName.toLowerCase().split(' ')[0])) || produceListings[0];
     setSelectedProduce(matchedProduce);
     navigate('/farmer/price-history');
-  };
-
-  const formatReportedDate = (raw: string): string => {
-    const clean = raw.replace('Reported ', '').trim();
-    if (clean.includes('/')) {
-      const parts = clean.split('/');
-      if (parts.length === 3) {
-        const day = parts[0];
-        const monthIndex = parseInt(parts[1], 10) - 1;
-        const year = parts[2];
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        if (monthIndex >= 0 && monthIndex < 12) {
-          return `${day} ${months[monthIndex]} ${year}`;
-        }
-      }
-    }
-    return clean || '31 Aug 2026';
   };
 
   return (
@@ -176,7 +160,7 @@ export const MarketPricesPage: React.FC = () => {
                       Government reported
                     </span>
                     <span className="text-[12px] text-on-surface-variant font-medium">
-                      {formatReportedDate(item.lastUpdated)}
+                      {item.lastUpdated}
                     </span>
                   </div>
 

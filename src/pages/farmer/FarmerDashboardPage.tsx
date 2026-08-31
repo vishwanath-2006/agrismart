@@ -53,7 +53,7 @@ export const FarmerDashboardPage: React.FC = () => {
         {/* 4 Useful Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KPIStatCard
-            label="Today's Tomato Rate"
+            label="Latest Tomato Rate"
             value={tomatoPrice}
             subValue="/kg"
             trendText="Govt reported"
@@ -94,12 +94,12 @@ export const FarmerDashboardPage: React.FC = () => {
         {/* 1. Today's Market & 2. Best Market Spotlight Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           
-          {/* Today's Market Card */}
+          {/* Latest Mandi Market Card */}
           <div className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/30 shadow-card flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-primary bg-primary-fixed/30 px-2.5 py-0.5 rounded-full">
-                  Today's Market
+                  Latest Mandi Report
                 </span>
                 <span className="text-[11px] text-on-surface-variant font-medium">
                   {reportedDate}
