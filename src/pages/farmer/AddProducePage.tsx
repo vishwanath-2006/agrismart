@@ -347,12 +347,14 @@ export const AddProducePage: React.FC = () => {
               </div>
 
               {/* Price Guidance Feedback Note */}
-              {priceGuidanceNote && (
-                <div className="text-[12px] font-medium text-on-surface-variant px-1 flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[16px] text-primary">info</span>
-                  <span>{priceGuidanceNote.text}</span>
-                </div>
-              )}
+              <div className="text-[12px] font-medium text-on-surface-variant px-1 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px] text-primary">info</span>
+                <span>
+                  {priceGuidanceNote
+                    ? `${priceGuidanceNote.text} Government price is only a reference. You choose your selling price.`
+                    : 'Government price is only a reference. You choose your selling price.'}
+                </span>
+              </div>
             </div>
 
             {/* 6. Simple Summary Before Publish */}
@@ -385,8 +387,8 @@ export const AddProducePage: React.FC = () => {
                   <span className="inline-block w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <span>Publish Produce Listing</span>
-                    <span className="material-symbols-outlined text-[22px]">rocket_launch</span>
+                    <span>List Produce</span>
+                    <span className="material-symbols-outlined text-[22px]">add_circle</span>
                   </>
                 )}
               </button>

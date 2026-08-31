@@ -247,9 +247,9 @@ export const MarketComparisonPage: React.FC = () => {
                   <div className="my-3 p-3.5 bg-primary-fixed/20 rounded-xl border border-primary/20 flex items-center justify-between">
                     <div>
                       <span className="text-[11px] font-bold uppercase tracking-wider text-primary block">
-                        Estimated return
+                        Your estimated earning
                       </span>
-                      <span className="text-[11px] text-on-surface-variant font-medium">Calculated net earning</span>
+                      <span className="text-[11px] text-on-surface-variant font-medium">After transport deduction</span>
                     </div>
                     <div className="text-right">
                       <span className="text-headline-lg-mobile font-headline-lg-mobile font-bold text-primary">
@@ -269,7 +269,7 @@ export const MarketComparisonPage: React.FC = () => {
 
                     <div>
                       <span className="text-[11px] text-on-surface-variant font-medium block">Transport</span>
-                      <span className="font-bold text-secondary">₹{mkt.transportCostPerKg.toFixed(2)}/kg</span>
+                      <span className="font-bold text-secondary">-₹{mkt.transportCostPerKg.toFixed(2)}/kg</span>
                       <span className="text-[10px] text-on-surface-variant block mt-0.5">Calculated</span>
                     </div>
 
@@ -291,7 +291,7 @@ export const MarketComparisonPage: React.FC = () => {
                       onClick={() => handleSelectMarket(mkt)}
                       className="text-label-sm font-bold text-primary hover:underline flex items-center gap-1"
                     >
-                      <span>View Details</span>
+                      <span>View History</span>
                       <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                     </button>
                   </div>

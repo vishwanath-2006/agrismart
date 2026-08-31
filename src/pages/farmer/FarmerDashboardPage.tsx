@@ -2,7 +2,6 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { AppLayout } from '../../components/layout/AppLayout';
-import { KPIStatCard } from '../../components/common/KPIStatCard';
 import { AIInsightBanner } from '../../components/common/AIInsightBanner';
 import { PriceSplineChart } from '../../components/common/PriceSplineChart';
 import { FARMER_AVATAR } from '../../data/mockData';
@@ -50,56 +49,15 @@ export const FarmerDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* 4 Useful Metric Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <KPIStatCard
-            label="Latest Tomato Rate"
-            value={tomatoPrice}
-            subValue="/kg"
-            trendText="Govt reported"
-            isPositiveTrend={true}
-            icon="currency_rupee"
-            colorScheme="primary"
-            onClick={() => navigate('/farmer/market-prices')}
-          />
-          <KPIStatCard
-            label="Best Market"
-            value={bestMarketName.split(',')[0].replace('APMC Yard ', '').replace(' Mandi', '')}
-            trendText="Top Net Return"
-            isPositiveTrend={true}
-            icon="storefront"
-            colorScheme="highlight"
-            onClick={() => navigate('/farmer/market-comparison')}
-          />
-          <KPIStatCard
-            label="Best Net Return"
-            value={`${bestMarketNetReturn}/kg`}
-            trendText="Calculated"
-            isPositiveTrend={true}
-            icon="account_balance_wallet"
-            colorScheme="tertiary"
-            onClick={() => navigate('/farmer/market-comparison')}
-          />
-          <KPIStatCard
-            label="Active Produce"
-            value={produceListings.filter(p => p.status === 'Active').length || produceListings.length}
-            trendText="Your Listings"
-            isPositiveTrend={true}
-            icon="inventory_2"
-            colorScheme="secondary"
-            onClick={() => navigate('/farmer/add-produce')}
-          />
-        </div>
-
-        {/* 1. Today's Market & 2. Best Market Spotlight Cards */}
+        {/* 1. Primary Highlight Cards: Latest Mandi Price & Best Market */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           
-          {/* Latest Mandi Market Card */}
+          {/* Latest Mandi Price Card */}
           <div className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/30 shadow-card flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-primary bg-primary-fixed/30 px-2.5 py-0.5 rounded-full">
-                  Latest Mandi Report
+                  Latest Mandi Price
                 </span>
                 <span className="text-[11px] text-on-surface-variant font-medium">
                   {reportedDate}
@@ -117,7 +75,7 @@ export const FarmerDashboardPage: React.FC = () => {
               </div>
               <p className="text-[12px] text-on-surface-variant flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#0f5238]" />
-                <span>Latest Government report (Source: data.gov.in)</span>
+                <span>Government reported (Source: data.gov.in)</span>
               </p>
             </div>
 
@@ -125,7 +83,7 @@ export const FarmerDashboardPage: React.FC = () => {
               onClick={() => navigate('/farmer/market-prices')}
               className="mt-4 w-full h-touch-target-min bg-surface-container-low hover:bg-surface-container text-primary font-semibold rounded-xl text-label-sm flex items-center justify-center gap-1.5 transition-all"
             >
-              <span>View All Mandi Prices</span>
+              <span>View All Prices</span>
               <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
             </button>
           </div>
@@ -139,7 +97,7 @@ export const FarmerDashboardPage: React.FC = () => {
                   Best Market
                 </span>
                 <span className="text-[11px] font-bold text-primary">
-                  Highest Net Return
+                  Top Earning
                 </span>
               </div>
 
@@ -154,14 +112,14 @@ export const FarmerDashboardPage: React.FC = () => {
                   <span className="text-[10px] text-on-surface-variant block">Govt reported</span>
                 </div>
                 <div>
-                  <span className="text-[11px] text-primary font-bold block">Estimated return</span>
+                  <span className="text-[11px] text-primary font-bold block">After transport</span>
                   <span className="font-bold text-primary text-[15px]">{bestMarketNetReturn}/kg</span>
-                  <span className="text-[10px] text-primary/80 block">Calculated net</span>
+                  <span className="text-[10px] text-primary/80 block">Estimated earning</span>
                 </div>
               </div>
 
               <p className="text-[12px] text-on-surface-variant">
-                Accounts for distance and transport costs from your farm.
+                Estimated earnings after accounting for transport distance from your farm.
               </p>
             </div>
 
@@ -175,22 +133,22 @@ export const FarmerDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Actions Bar (Min 48px Touch Targets) */}
+        {/* 2. Quick Actions Bar (Min 48px Touch Targets) */}
         <div className="grid grid-cols-3 gap-2.5">
-          <button
-            onClick={() => navigate('/farmer/market-comparison')}
-            className="p-3.5 min-h-[56px] bg-surface-container-lowest rounded-2xl border border-outline-variant/30 shadow-card flex flex-col items-center justify-center gap-1 hover:border-primary/40 active:scale-[0.98] transition-all text-center"
-          >
-            <span className="material-symbols-outlined text-[24px] text-primary">compare_arrows</span>
-            <span className="font-label-sm text-[12px] font-bold text-on-surface">Compare Markets</span>
-          </button>
-
           <button
             onClick={() => navigate('/farmer/market-prices')}
             className="p-3.5 min-h-[56px] bg-surface-container-lowest rounded-2xl border border-outline-variant/30 shadow-card flex flex-col items-center justify-center gap-1 hover:border-primary/40 active:scale-[0.98] transition-all text-center"
           >
-            <span className="material-symbols-outlined text-[24px] text-secondary">storefront</span>
-            <span className="font-label-sm text-[12px] font-bold text-on-surface">View Prices</span>
+            <span className="material-symbols-outlined text-[24px] text-primary">storefront</span>
+            <span className="font-label-sm text-[12px] font-bold text-on-surface">Check Prices</span>
+          </button>
+
+          <button
+            onClick={() => navigate('/farmer/market-comparison')}
+            className="p-3.5 min-h-[56px] bg-surface-container-lowest rounded-2xl border border-outline-variant/30 shadow-card flex flex-col items-center justify-center gap-1 hover:border-primary/40 active:scale-[0.98] transition-all text-center"
+          >
+            <span className="material-symbols-outlined text-[24px] text-secondary">compare_arrows</span>
+            <span className="font-label-sm text-[12px] font-bold text-on-surface">Compare Markets</span>
           </button>
 
           <button

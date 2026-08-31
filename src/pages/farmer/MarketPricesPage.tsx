@@ -165,7 +165,7 @@ export const MarketPricesPage: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-1 text-[12px] font-semibold text-primary group-hover:underline">
-                    <span>View Details</span>
+                    <span>View History</span>
                     <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                   </div>
                 </div>
