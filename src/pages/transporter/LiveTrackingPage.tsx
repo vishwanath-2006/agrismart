@@ -8,7 +8,7 @@ import { useLiveTracking } from '../../hooks/useLiveTracking';
 export const LiveTrackingPage: React.FC = () => {
   const navigate = useNavigate();
   const { activeOrder, orders, currentRole } = useApp();
-  const order = activeOrder || orders[0];
+  const order = activeOrder || (orders.length > 0 ? orders[0] : null);
 
   const isDriverRole = currentRole === 'transporter';
 
@@ -27,21 +27,87 @@ export const LiveTrackingPage: React.FC = () => {
     distanceRemainingKm,
     startDriverTracking
   } = useLiveTracking({
-    orderId: order.id,
+    orderId: order?.id || '',
     isDriver: isDriverRole,
     destinationCoords,
     originCoords
   });
 
+  if (!order) {
+    return (
+      <AppLayout
+        title="Live Delivery Tracking"
+        showBack
+        onBack={() => {
+          if (currentRole === 'transporter') navigate('/transporter/dashboard');
+          else if (currentRole === 'buyer') navigate('/buyer/marketplace');
+          else navigate('/farmer/dashboard');
+        }}
+      >
+        <div className="flex flex-col items-center justify-center p-8 text-center bg-surface-container-lowest rounded-2xl border border-outline-variant/30 gap-3 mt-6">
+          <span className="material-symbols-outlined text-[44px] text-on-surface-variant/50">local_shipping</span>
+          <h3 className="text-title-md font-bold text-on-surface">No active delivery</h3>
+          <p className="text-body-md text-on-surface-variant">There is no shipment currently being tracked.</p>
+          <button
+            onClick={() => {
+              if (currentRole === 'transporter') navigate('/transporter/dashboard');
+              else if (currentRole === 'buyer') navigate('/buyer/marketplace');
+              else navigate('/farmer/dashboard');
+            }}
+            className="mt-2 h-touch-target-min px-6 bg-primary text-on-primary font-bold rounded-xl text-label-sm shadow-sm"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // Delivery status formatting
+  const isTripStarted =
+    order.status === 'IN_TRANSIT' ||
+    order.status === 'ARRIVING' ||
+    order.status === 'DELIVERED' ||
+    order.status === 'PAYMENT_RELEASED' ||
+    order.status === 'COMPLETED';
+
+  const isGpsActive = gpsStatus === 'LIVE' && latitude !== null && longitude !== null;
+
+  // 4-Step Delivery Progress State Mapping
+  const progressSteps = [
+    {
+      id: 'pickup',
+      title: 'Pickup Completed',
+      desc: `Farm Gate • ${order.farmer.location}`,
+      isDone: isTripStarted || order.status === 'PICKED_UP' || order.status === 'TRANSPORTER_ASSIGNED',
+      isCurrent: order.status === 'ORDER_PLACED' || order.status === 'TRANSPORTER_ASSIGNED'
+    },
+    {
+      id: 'transit',
+      title: 'In Transit',
+      desc: 'On the way via NH-275 corridor',
+      isDone: order.status === 'ARRIVING' || order.status === 'DELIVERED' || order.status === 'PAYMENT_RELEASED' || order.status === 'COMPLETED',
+      isCurrent: order.status === 'IN_TRANSIT' || order.status === 'PICKED_UP'
+    },
+    {
+      id: 'arrived',
+      title: 'Arrived at Warehouse',
+      desc: `Depot • ${order.buyer.warehouseAddress.split(',')[0]}`,
+      isDone: order.status === 'DELIVERED' || order.status === 'PAYMENT_RELEASED' || order.status === 'COMPLETED',
+      isCurrent: order.status === 'ARRIVING'
+    },
+    {
+      id: 'delivered',
+      title: 'Delivered & Escrow Released',
+      desc: 'Quality inspection verified',
+      isDone: order.status === 'DELIVERED' || order.status === 'PAYMENT_RELEASED' || order.status === 'COMPLETED',
+      isCurrent: false
+    }
+  ];
+
   return (
     <AppLayout
-      title={
-        isDriverRole
-          ? 'Live Dispatch Telemetry'
-          : currentRole === 'buyer'
-          ? 'Buyer Live Shipment Tracking'
-          : 'Farmer Live Dispatch Tracking'
-      }
+      title="Live Delivery Tracking"
       showBack
       onBack={() => {
         if (currentRole === 'transporter') navigate('/transporter/dashboard');
@@ -49,11 +115,64 @@ export const LiveTrackingPage: React.FC = () => {
         else navigate('/farmer/dashboard');
       }}
     >
-      <div className="flex flex-col w-full gap-4 pb-6">
-        {/* Permission Denied / Error Alert Banner */}
+      <div className="flex flex-col w-full gap-4 pb-12">
+        
+        {/* 1. Header with Order Context */}
+        <div className="pt-1">
+          <div className="flex items-center justify-between">
+            <h2 className="text-title-md font-title-md font-bold text-on-surface">Live Delivery Tracking</h2>
+            <span className="text-[12px] font-bold text-primary bg-primary-fixed/30 px-2.5 py-0.5 rounded-full">
+              Order #{order.orderNumber}
+            </span>
+          </div>
+          <p className="text-[13px] text-on-surface-variant mt-0.5">
+            {order.cropName} • {order.quantityKg} kg • {order.farmer.location} → {order.buyer.warehouseAddress.split(',')[0]}
+          </p>
+        </div>
+
+        {/* 2. Prominent Live Status Card */}
+        <div className={`p-4 rounded-2xl border flex flex-col gap-1 transition-all ${
+          isGpsActive
+            ? 'bg-primary-fixed/20 border-primary/40 shadow-sm'
+            : isTripStarted
+            ? 'bg-surface-container-low border-outline-variant/30'
+            : 'bg-surface-container-lowest border-outline-variant/30'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className={`w-3 h-3 rounded-full ${
+                isGpsActive
+                  ? 'bg-primary animate-pulse'
+                  : isTripStarted
+                  ? 'bg-secondary animate-ping'
+                  : 'bg-outline'
+              }`} />
+              <span className="font-bold text-body-md text-on-surface">
+                {isGpsActive
+                  ? '● LIVE — Driver Location Updating'
+                  : isTripStarted
+                  ? '○ Location Connecting / Staging'
+                  : '○ Trip Not Started'}
+              </span>
+            </div>
+            <span className="text-[11px] font-medium text-on-surface-variant">
+              {isGpsActive && lastUpdated ? `Updated at ${lastUpdated}` : isTripStarted ? 'Waiting for GPS' : 'Staged at pickup'}
+            </span>
+          </div>
+
+          <p className="text-[12px] text-on-surface-variant pl-5">
+            {isGpsActive
+              ? `Realtime GPS active from transporter device. Direct distance remaining: ~${distanceRemainingKm || 145} km.`
+              : isTripStarted
+              ? 'Waiting for the driver\'s next GPS update from the transit corridor.'
+              : 'Live location will begin sharing when the transporter starts the trip.'}
+          </p>
+        </div>
+
+        {/* Permission Denied Alert (If driver denied GPS) */}
         {gpsStatus === 'PERMISSION_DENIED' && (
-          <div className="p-3.5 bg-error-container/30 text-error rounded-2xl border border-error/20 text-label-sm font-semibold flex items-center justify-between gap-3 animate-in fade-in">
-            <div className="flex items-center gap-2.5">
+          <div className="p-3.5 bg-error-container/30 text-error rounded-2xl border border-error/20 text-label-sm font-semibold flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-[20px]">location_disabled</span>
               <span>{errorMessage || 'Location permission is required for live tracking.'}</span>
             </div>
@@ -69,8 +188,8 @@ export const LiveTrackingPage: React.FC = () => {
           </div>
         )}
 
-        {/* Real Live Leaflet Map */}
-        <div className="mt-1">
+        {/* 3. Real Leaflet Map */}
+        <div className="rounded-2xl overflow-hidden shadow-card border border-outline-variant/30">
           <LiveMapPreview
             origin={order.farmer.location}
             destination={order.buyer.warehouseAddress}
@@ -87,52 +206,56 @@ export const LiveTrackingPage: React.FC = () => {
             distanceRemainingKm={distanceRemainingKm}
             currentLocationDesc={
               latitude && longitude
-                ? `Live GPS: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`
-                : 'Connecting to Realtime GPS Broadcast...'
+                ? `Driver GPS: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`
+                : isTripStarted
+                ? 'Waiting for driver GPS satellite lock...'
+                : 'Vehicle staged at Farm Gate'
             }
             isOptimizedRoute={true}
           />
         </div>
 
-        {/* Real Telemetry Bar */}
+        {/* 4. Telemetry Metric Cards */}
         <div className="grid grid-cols-3 gap-2.5">
-          <div className="bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 shadow-card text-center">
-            <span className="text-[11px] text-on-surface-variant font-medium block">Reefer Temp</span>
+          <div className="bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 text-center">
+            <span className="text-[11px] text-on-surface-variant font-medium block">GPS Telemetry</span>
             <div className="flex items-center justify-center gap-1 mt-0.5">
-              <span className="material-symbols-outlined text-primary text-[16px]">device_thermostat</span>
-              <span className="text-body-md font-bold text-primary">17.8°C</span>
+              <span className="material-symbols-outlined text-primary text-[16px]">sensors</span>
+              <span className="text-body-md font-bold text-primary">
+                {isGpsActive ? 'Active' : isTripStarted ? 'Acquiring' : 'Standby'}
+              </span>
             </div>
-            <span className="text-[10px] text-tertiary font-semibold">Sensor Active</span>
+            <span className="text-[10px] text-on-surface-variant block">Driver GPS</span>
           </div>
 
-          <div className="bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 shadow-card text-center">
-            <span className="text-[11px] text-on-surface-variant font-medium block">Current Speed</span>
+          <div className="bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 text-center">
+            <span className="text-[11px] text-on-surface-variant font-medium block">Vehicle Speed</span>
             <div className="flex items-center justify-center gap-1 mt-0.5">
               <span className="material-symbols-outlined text-secondary text-[16px]">speed</span>
               <span className="text-body-md font-bold text-secondary">
-                {speedKmh !== null && speedKmh !== undefined ? `${speedKmh} km/h` : 'Unavailable'}
+                {speedKmh !== null && speedKmh !== undefined ? `${speedKmh} km/h` : '0 km/h'}
               </span>
             </div>
-            <span className="text-[10px] text-on-surface-variant">
-              {speedKmh !== null && speedKmh > 0 ? 'In Motion' : 'Stationary / Idle'}
+            <span className="text-[10px] text-on-surface-variant block">
+              {speedKmh && speedKmh > 0 ? 'In Motion' : 'Stationary'}
             </span>
           </div>
 
-          <div className="bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 shadow-card text-center">
+          <div className="bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 text-center">
             <span className="text-[11px] text-on-surface-variant font-medium block">Distance Left</span>
             <div className="flex items-center justify-center gap-1 mt-0.5">
               <span className="material-symbols-outlined text-tertiary text-[16px]">navigation</span>
               <span className="text-body-md font-bold text-on-surface">
                 {distanceRemainingKm !== null && distanceRemainingKm !== undefined
                   ? `~${distanceRemainingKm} km`
-                  : 'Calculating'}
+                  : '~145 km'}
               </span>
             </div>
-            <span className="text-[10px] text-tertiary font-semibold">Direct Line</span>
+            <span className="text-[10px] text-tertiary font-semibold">Calculated</span>
           </div>
         </div>
 
-        {/* Driver & Cargo Info Card */}
+        {/* 5. Driver & Vehicle Information Card */}
         <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
@@ -141,11 +264,19 @@ export const LiveTrackingPage: React.FC = () => {
               className="w-12 h-12 rounded-xl object-cover border border-outline-variant/20 shrink-0"
             />
             <div>
-              <h4 className="font-label-sm font-bold text-on-surface">
-                {order.transporter?.name || 'Driver Logistics'}
-              </h4>
+              <div className="flex items-center gap-1.5">
+                <h4 className="font-label-sm font-bold text-on-surface">
+                  {order.transporter?.name || 'Marcus Vance'}
+                </h4>
+                <span className="text-[10px] font-semibold text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded">
+                  Demo profile
+                </span>
+              </div>
               <p className="text-[12px] text-on-surface-variant">
-                {order.transporter?.vehicleType || '4-Wheeler Tempo Reefer'} ({order.transporter?.vehiclePlate || 'KA-09-E-4421'})
+                {order.transporter?.vehicleType || 'Tata 407 Reefer'} • {order.transporter?.vehiclePlate || 'KA-09-E-4421'}
+              </p>
+              <p className="text-[11px] text-primary font-semibold mt-0.5">
+                Status: {isTripStarted ? 'On trip to delivery' : 'Assigned to order'}
               </p>
             </div>
           </div>
@@ -168,28 +299,28 @@ export const LiveTrackingPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Shipment Milestones Timeline */}
+        {/* 6. 4-Step Delivery Progress Timeline */}
         <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h3 className="font-title-md text-title-md font-bold text-on-surface">Shipment Timeline</h3>
+            <h3 className="font-title-md text-title-md font-bold text-on-surface">Delivery Progress</h3>
             <span className="text-[12px] font-bold text-primary">Order #{order.orderNumber}</span>
           </div>
 
           <div className="space-y-4 pt-2">
-            {order.trackingSteps.map((step, idx) => (
-              <div key={idx} className="flex items-start gap-3 relative">
+            {progressSteps.map((step, idx) => (
+              <div key={step.id} className="flex items-start gap-3 relative">
                 {/* Timeline connector line */}
-                {idx < order.trackingSteps.length - 1 && (
+                {idx < progressSteps.length - 1 && (
                   <div
                     className={`absolute left-4 top-8 bottom-0 w-0.5 ${
-                      step.isCompleted ? 'bg-primary' : 'bg-outline-variant/40'
+                      step.isDone ? 'bg-primary' : 'bg-outline-variant/40'
                     }`}
                   />
                 )}
 
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ${
-                    step.isCompleted
+                    step.isDone
                       ? 'bg-primary text-on-primary shadow-sm'
                       : step.isCurrent
                       ? 'bg-tertiary text-on-tertiary ring-4 ring-tertiary-fixed/40'
@@ -197,7 +328,7 @@ export const LiveTrackingPage: React.FC = () => {
                   }`}
                 >
                   <span className="material-symbols-outlined text-[16px]">
-                    {step.isCompleted ? 'check' : step.isCurrent ? 'navigation' : 'radio_button_unchecked'}
+                    {step.isDone ? 'check' : step.isCurrent ? 'navigation' : 'radio_button_unchecked'}
                   </span>
                 </div>
 
@@ -205,26 +336,25 @@ export const LiveTrackingPage: React.FC = () => {
                   <div className="flex items-baseline justify-between gap-1">
                     <h4
                       className={`text-[14px] font-bold ${
-                        step.isCompleted || step.isCurrent ? 'text-on-surface' : 'text-on-surface-variant/70'
+                        step.isDone || step.isCurrent ? 'text-on-surface' : 'text-on-surface-variant/70'
                       }`}
                     >
                       {step.title}
                     </h4>
-                    <span className="text-[11px] font-medium text-on-surface-variant">{step.timestamp}</span>
                   </div>
-                  <p className="text-[12px] text-on-surface-variant mt-0.5">{step.description}</p>
+                  <p className="text-[12px] text-on-surface-variant mt-0.5">{step.desc}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Action Button: Driver Arrived Confirmation (only for transporter) or Dashboard link for Buyer/Farmer */}
+        {/* 7. Action Button */}
         <div className="pt-2">
           {isDriverRole ? (
             <button
               onClick={() => navigate('/transporter/delivery-confirmation')}
-              className="w-full h-touch-target-min bg-primary text-on-primary rounded-2xl font-title-md text-title-md font-bold shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              className="w-full min-h-[52px] bg-primary text-on-primary rounded-2xl font-title-md text-title-md font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
               <span>Arrived at Warehouse • Confirm Delivery</span>
               <span className="material-symbols-outlined text-[20px]">task_alt</span>
@@ -235,7 +365,7 @@ export const LiveTrackingPage: React.FC = () => {
                 if (currentRole === 'buyer') navigate('/buyer/marketplace');
                 else navigate('/farmer/dashboard');
               }}
-              className="w-full h-touch-target-min bg-surface-container text-on-surface rounded-2xl font-label-sm font-semibold hover:bg-surface-container-high active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              className="w-full min-h-[50px] bg-surface-container text-on-surface rounded-2xl font-label-sm font-semibold hover:bg-surface-container-high active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-[18px]">space_dashboard</span>
               <span>Back to Dashboard</span>
