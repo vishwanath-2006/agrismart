@@ -7,7 +7,7 @@ import { FARMER_AVATAR } from '../../data/mockData';
 
 export const FarmerProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { farmerProfile, saveFarmerProfile, isProfileLoading, logout, switchRole } = useApp();
+  const { farmerProfile, saveFarmerProfile, isProfileLoading, logout, switchRole, produceListings } = useApp();
 
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -129,6 +129,8 @@ export const FarmerProfilePage: React.FC = () => {
   // VIEW A: COMPLETED PROFILE SUMMARY (When completed and not actively editing)
   // =========================================================================
   if (formData.profileCompleted && !isEditing) {
+    const activeListings = produceListings || [];
+
     return (
       <AppLayout title="Farmer Profile" showBack onBack={() => navigate('/farmer/dashboard')}>
         <div className="flex flex-col w-full max-w-4xl mx-auto pb-16 gap-6">
@@ -140,7 +142,7 @@ export const FarmerProfilePage: React.FC = () => {
             </div>
           )}
 
-          {/* Profile Header Hero Card */}
+          {/* 1. Profile Header Hero Card */}
           <div className="bg-surface-container rounded-3xl p-6 shadow-sm border border-outline-variant/30 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
             <div className="flex items-center gap-4 relative z-10">
               <div className="relative">
@@ -157,15 +159,18 @@ export const FarmerProfilePage: React.FC = () => {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="font-headline-lg-mobile md:font-headline-lg text-on-surface font-bold">
-                    {formData.fullName || 'Farmer Profile'}
+                    {formData.fullName || 'Ramesh Kumar'}
                   </h1>
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-primary text-on-primary shadow-sm">
                     <span className="material-symbols-outlined text-[14px]">verified</span>
-                    Verified Farmer
+                    Farmer
+                  </span>
+                  <span className="text-[10px] font-semibold text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded-full">
+                    Demo profile information
                   </span>
                 </div>
                 <p className="font-body-md text-on-surface-variant mt-0.5">
-                  +91 {formData.phone || '98450 12345'} • {formData.village || 'Mysore'}, {formData.state || 'Karnataka'}
+                  {formData.village || 'Mysore'}, {formData.state || 'Karnataka'} • +91 {formData.phone || '98450 12345'}
                 </p>
                 <div className="flex items-center gap-2 mt-2">
                   <span className="text-[12px] font-semibold text-primary bg-primary-fixed/30 px-3 py-0.5 rounded-full">
@@ -192,27 +197,27 @@ export const FarmerProfilePage: React.FC = () => {
                 className="flex-1 md:flex-initial h-touch-target-min px-5 bg-surface-container-lowest text-primary border border-primary/30 rounded-xl font-label-sm font-semibold hover:bg-surface-container-high active:scale-95 transition-all flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                List Produce
+                Add Produce
               </button>
             </div>
           </div>
 
-          {/* 4-Stat Overview Cards */}
+          {/* 2. Farmer Information Overview */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card">
-              <p className="text-[12px] font-medium text-on-surface-variant">Farm Area</p>
+              <p className="text-[12px] font-medium text-on-surface-variant">Farm Land</p>
               <p className="text-title-md font-bold text-on-surface mt-1">
                 {formData.farmSize || 4.5} {formData.farmSizeUnit || 'Acres'}
               </p>
             </div>
             <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card">
-              <p className="text-[12px] font-medium text-on-surface-variant">Primary Market</p>
+              <p className="text-[12px] font-medium text-on-surface-variant">Primary Mandi</p>
               <p className="text-title-md font-bold text-on-surface mt-1 truncate">
                 {formData.primaryMarket || 'Mysore APMC'}
               </p>
             </div>
             <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card">
-              <p className="text-[12px] font-medium text-on-surface-variant">Expected Price</p>
+              <p className="text-[12px] font-medium text-on-surface-variant">Target Price</p>
               <p className="text-title-md font-bold text-primary mt-1">
                 ₹{formData.expectedPricePreference || 28} / kg
               </p>
@@ -225,19 +230,60 @@ export const FarmerProfilePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Information Sections Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* 1. Farm Location Section */}
-            <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">location_on</span>
-                  Farm Location
-                </h3>
-                <span className="text-[11px] font-bold text-primary bg-primary-fixed/30 px-2 py-0.5 rounded-full">
-                  GPS Active
-                </span>
+          {/* 3. Your Produce Section */}
+          <div className="bg-surface-container-lowest p-5 rounded-3xl border border-outline-variant/30 shadow-card flex flex-col gap-3.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-title-md font-bold text-on-surface">Your Produce Listings</h3>
+                <p className="text-[12px] text-on-surface-variant">Produce currently active in the marketplace</p>
               </div>
+              <button
+                onClick={() => navigate('/farmer/add-produce')}
+                className="text-[12px] font-bold text-primary hover:underline flex items-center gap-1"
+              >
+                <span>Add Crop</span>
+                <span className="material-symbols-outlined text-[16px]">add</span>
+              </button>
+            </div>
+
+            {activeListings.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+                {activeListings.slice(0, 3).map((item) => (
+                  <div key={item.id} className="p-3 bg-surface-container-low rounded-2xl border border-outline-variant/20 flex items-center gap-3">
+                    <img
+                      src={item.imageUrl}
+                      alt={item.cropName}
+                      className="w-12 h-12 rounded-xl object-cover border border-outline-variant/20 shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-label-sm font-bold text-on-surface truncate">{item.cropName}</h4>
+                      <p className="text-[11px] text-on-surface-variant">{item.quantityKg} kg • {item.qualityGrade}</p>
+                      <p className="text-[12px] font-bold text-primary mt-0.5">₹{item.pricePerKg}/kg</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-center text-on-surface-variant bg-surface-container-low rounded-2xl">
+                <p className="text-[13px]">No active produce listed yet.</p>
+                <button
+                  onClick={() => navigate('/farmer/add-produce')}
+                  className="mt-2 text-[12px] font-bold text-primary"
+                >
+                  Create your first listing
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 4. Information Details Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Farm Location Section */}
+            <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3">
+              <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">location_on</span>
+                Farm Location Details
+              </h3>
 
               <div className="space-y-2 text-body-md text-on-surface">
                 <div className="flex justify-between py-1 border-b border-outline-variant/20">
@@ -259,7 +305,7 @@ export const FarmerProfilePage: React.FC = () => {
               </div>
             </div>
 
-            {/* 2. Farm & Crops Section */}
+            {/* Cultivated Crops & Land Section */}
             <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3">
               <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">eco</span>
@@ -287,67 +333,11 @@ export const FarmerProfilePage: React.FC = () => {
                     ))}
                   </div>
                 </div>
-                {formData.otherCrops && (
-                  <div className="flex justify-between py-1 border-t border-outline-variant/20">
-                    <span className="text-on-surface-variant text-[13px]">Additional Crops</span>
-                    <span className="font-semibold text-right">{formData.otherCrops}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 3. Market & Dispatch Preferences */}
-            <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3">
-              <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">storefront</span>
-                Market &amp; Selling Preferences
-              </h3>
-
-              <div className="space-y-2 text-body-md text-on-surface">
-                <div className="flex justify-between py-1 border-b border-outline-variant/20">
-                  <span className="text-on-surface-variant text-[13px]">Primary Mandi</span>
-                  <span className="font-semibold text-right">{formData.primaryMarket || 'Mysore Bandipalya'}</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-outline-variant/20">
-                  <span className="text-on-surface-variant text-[13px]">Secondary Market</span>
-                  <span className="font-semibold text-right">{formData.secondaryMarket || 'Bangalore KR Market'}</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-outline-variant/20">
-                  <span className="text-on-surface-variant text-[13px]">Dispatch Distance</span>
-                  <span className="font-semibold text-right">{formData.preferredSellingDistance || 'Within 50 km'}</span>
-                </div>
-                <div className="flex justify-between py-1">
-                  <span className="text-on-surface-variant text-[13px]">Buyer Preference</span>
-                  <span className="font-semibold text-right">{formData.preferredBuyerType || 'Wholesale Traders'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 4. Pricing & Target Benchmarks */}
-            <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3">
-              <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">payments</span>
-                Pricing Expectations
-              </h3>
-
-              <div className="space-y-2 text-body-md text-on-surface">
-                <div className="flex justify-between py-1 border-b border-outline-variant/20">
-                  <span className="text-on-surface-variant text-[13px]">Expected Target Price</span>
-                  <span className="font-bold text-primary text-right">₹{formData.expectedPricePreference || 28} / kg</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-outline-variant/20">
-                  <span className="text-on-surface-variant text-[13px]">Minimum Floor Price</span>
-                  <span className="font-bold text-on-surface text-right">₹{formData.minimumPricePreference || 22} / kg</span>
-                </div>
-                <div className="flex justify-between py-1">
-                  <span className="text-on-surface-variant text-[13px]">Harvest Frequency</span>
-                  <span className="font-semibold text-right">{formData.sellingFrequency || 'Weekly'}</span>
-                </div>
               </div>
             </div>
           </div>
 
-          {/* Bottom Navigation & Account Options */}
+          {/* 5. Bottom Navigation & Account Options */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-outline-variant/30">
             <button
               onClick={() => navigate('/farmer/dashboard')}
@@ -366,6 +356,15 @@ export const FarmerProfilePage: React.FC = () => {
                 className="flex-1 sm:flex-initial h-touch-target-min px-4 bg-surface-container-low text-on-surface-variant font-label-sm rounded-xl hover:bg-surface-container transition-colors"
               >
                 Switch to Buyer
+              </button>
+              <button
+                onClick={() => {
+                  switchRole('transporter');
+                  navigate('/transporter/dashboard');
+                }}
+                className="flex-1 sm:flex-initial h-touch-target-min px-4 bg-surface-container-low text-on-surface-variant font-label-sm rounded-xl hover:bg-surface-container transition-colors"
+              >
+                Switch to Transporter
               </button>
               <button
                 onClick={async () => {

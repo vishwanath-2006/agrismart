@@ -6,7 +6,7 @@ import { BuyerProfileData } from '../../types';
 
 export const BuyerProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { buyerProfile, saveBuyerProfile, isProfileLoading, logout, switchRole } = useApp();
+  const { buyerProfile, saveBuyerProfile, isProfileLoading, logout, switchRole, orders } = useApp();
 
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -89,6 +89,10 @@ export const BuyerProfilePage: React.FC = () => {
   // VIEW A: COMPLETED PROFILE SUMMARY (When completed and not actively editing)
   // =========================================================================
   if (formData.profileCompleted && !isEditing) {
+    const buyerOrders = orders || [];
+    const activeBuyerOrders = buyerOrders.filter(o => o.status !== 'COMPLETED');
+    const completedBuyerOrders = buyerOrders.filter(o => o.status === 'COMPLETED');
+
     return (
       <AppLayout title="Buyer Profile" showBack onBack={() => navigate('/buyer/marketplace')}>
         <div className="flex flex-col w-full max-w-4xl mx-auto pb-16 gap-6">
@@ -100,7 +104,7 @@ export const BuyerProfilePage: React.FC = () => {
             </div>
           )}
 
-          {/* Profile Header Hero Card */}
+          {/* 1. Profile Header Hero Card */}
           <div className="bg-surface-container rounded-3xl p-6 shadow-sm border border-outline-variant/30 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
             <div className="flex items-center gap-4 relative z-10">
               <div className="relative">
@@ -115,22 +119,25 @@ export const BuyerProfilePage: React.FC = () => {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="font-headline-lg-mobile md:font-headline-lg text-on-surface font-bold">
-                    {formData.businessName || formData.fullName || 'Buyer Profile'}
+                    {formData.businessName || 'XYZ Traders'}
                   </h1>
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-secondary text-on-secondary shadow-sm">
                     <span className="material-symbols-outlined text-[14px]">verified</span>
-                    Verified Buyer
+                    Buyer
+                  </span>
+                  <span className="text-[10px] font-semibold text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded-full">
+                    Demo profile information
                   </span>
                 </div>
                 <p className="font-body-md text-on-surface-variant mt-0.5">
-                  Contact: {formData.fullName || 'Procurement Manager'} • +91 {formData.phone || '98765 43210'}
+                  {formData.city || 'Bangalore'}, {formData.state || 'Karnataka'} • Contact: {formData.fullName || 'Priya Sharma'} (+91 {formData.phone || '98765 43210'})
                 </p>
                 <div className="flex items-center gap-2 mt-2">
                   <span className="text-[12px] font-semibold text-secondary bg-secondary-fixed/30 px-3 py-0.5 rounded-full">
                     Profile 100% Complete
                   </span>
                   <span className="text-[12px] text-on-surface-variant font-medium">
-                    {formData.businessType || 'Wholesaler'} • {formData.city || 'Bangalore'}
+                    {formData.businessType || 'Wholesaler'}
                   </span>
                 </div>
               </div>
@@ -155,7 +162,7 @@ export const BuyerProfilePage: React.FC = () => {
             </div>
           </div>
 
-          {/* 4-Stat Overview Cards */}
+          {/* 2. Key Buyer Overview Metrics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card">
               <p className="text-[12px] font-medium text-on-surface-variant">Business Type</p>
@@ -166,26 +173,69 @@ export const BuyerProfilePage: React.FC = () => {
             <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card">
               <p className="text-[12px] font-medium text-on-surface-variant">Purchase Vol</p>
               <p className="text-title-md font-bold text-on-surface mt-1 truncate">
-                {formData.typicalPurchaseQuantity || '5 Tons'}
+                {formData.typicalPurchaseQuantity || '500 kg - 5 Tons'}
               </p>
             </div>
             <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card">
-              <p className="text-[12px] font-medium text-on-surface-variant">Frequency</p>
-              <p className="text-title-md font-bold text-secondary mt-1">
-                {formData.buyingFrequency || 'Daily'}
+              <p className="text-[12px] font-medium text-on-surface-variant">Active Orders</p>
+              <p className="text-title-md font-bold text-primary mt-1">
+                {activeBuyerOrders.length}
               </p>
             </div>
             <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card">
-              <p className="text-[12px] font-medium text-on-surface-variant">Quality Grade</p>
-              <p className="text-title-md font-bold text-on-surface mt-1 truncate">
-                {formData.preferredQuality || 'Grade A & Premium'}
+              <p className="text-[12px] font-medium text-on-surface-variant">Completed Deals</p>
+              <p className="text-title-md font-bold text-on-surface mt-1">
+                {completedBuyerOrders.length}
               </p>
             </div>
           </div>
 
-          {/* Information Sections Grid */}
+          {/* 3. Buying Activity Section */}
+          <div className="bg-surface-container-lowest p-5 rounded-3xl border border-outline-variant/30 shadow-card flex flex-col gap-3.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-title-md font-bold text-on-surface">Buying Activity</h3>
+                <p className="text-[12px] text-on-surface-variant">Summary of your procurement orders</p>
+              </div>
+              <button
+                onClick={() => navigate('/buyer/marketplace')}
+                className="text-[12px] font-bold text-primary hover:underline flex items-center gap-1"
+              >
+                <span>Browse Marketplace</span>
+                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              </button>
+            </div>
+
+            {buyerOrders.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {buyerOrders.slice(0, 2).map((ord) => (
+                  <div key={ord.id} className="p-3.5 bg-surface-container-low rounded-2xl border border-outline-variant/20 flex items-center gap-3">
+                    <img
+                      src={ord.produceImage}
+                      alt={ord.cropName}
+                      className="w-12 h-12 rounded-xl object-cover border border-outline-variant/20 shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-label-sm font-bold text-on-surface truncate">{ord.cropName}</h4>
+                        <span className="text-[11px] font-bold text-primary">#{ord.orderNumber}</span>
+                      </div>
+                      <p className="text-[11px] text-on-surface-variant">{ord.quantityKg} kg • ₹{ord.totalAmount.toLocaleString()}</p>
+                      <p className="text-[11px] font-semibold text-tertiary mt-0.5">Status: {ord.status.replace(/_/g, ' ')}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-center text-on-surface-variant bg-surface-container-low rounded-2xl">
+                <p className="text-[13px]">Orders will appear here after you place an order.</p>
+              </div>
+            )}
+          </div>
+
+          {/* 4. Information Details Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* 1. Business & Contact Section */}
+            {/* Business & Contact Section */}
             <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3">
               <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
                 <span className="material-symbols-outlined text-secondary">business</span>
@@ -198,25 +248,21 @@ export const BuyerProfilePage: React.FC = () => {
                   <span className="font-semibold text-right">{formData.businessName || 'XYZ Agri Trades Ltd.'}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-outline-variant/20">
-                  <span className="text-on-surface-variant text-[13px]">Contact Representative</span>
+                  <span className="text-on-surface-variant text-[13px]">Representative</span>
                   <span className="font-semibold text-right">{formData.fullName || 'Priya Sharma'}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-outline-variant/20">
                   <span className="text-on-surface-variant text-[13px]">Phone Number</span>
                   <span className="font-semibold text-right">+91 {formData.phone || '98765 43210'}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-outline-variant/20">
-                  <span className="text-on-surface-variant text-[13px]">Email Address</span>
-                  <span className="font-semibold text-right truncate max-w-[200px]">{formData.email || 'procurement@xyztraders.com'}</span>
-                </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-on-surface-variant text-[13px]">Business Category</span>
-                  <span className="font-semibold text-right">{formData.businessType || 'Wholesaler'}</span>
+                  <span className="text-on-surface-variant text-[13px]">Email Address</span>
+                  <span className="font-semibold text-right truncate max-w-[180px]">{formData.email || 'procurement@xyztraders.com'}</span>
                 </div>
               </div>
             </div>
 
-            {/* 2. Warehouse & Receiving Depot Section */}
+            {/* Warehouse & Receiving Depot Section */}
             <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3">
               <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
                 <span className="material-symbols-outlined text-secondary">warehouse</span>
@@ -226,7 +272,7 @@ export const BuyerProfilePage: React.FC = () => {
               <div className="space-y-2 text-body-md text-on-surface">
                 <div className="flex justify-between py-1 border-b border-outline-variant/20">
                   <span className="text-on-surface-variant text-[13px]">Receiving Address</span>
-                  <span className="font-semibold text-right max-w-[220px]">{formData.receivingAddress || 'Depot 4B, APMC Yard, Yeshwantpur'}</span>
+                  <span className="font-semibold text-right max-w-[200px]">{formData.receivingAddress || 'Depot 4B, APMC Yard'}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-outline-variant/20">
                   <span className="text-on-surface-variant text-[13px]">City &amp; District</span>
@@ -242,52 +288,16 @@ export const BuyerProfilePage: React.FC = () => {
                 </div>
               </div>
             </div>
-
-            {/* 3. Procurement Commodities Section */}
-            <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3 md:col-span-2">
-              <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
-                <span className="material-symbols-outlined text-secondary">shopping_basket</span>
-                Procurement Preferences &amp; Target Commodities
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-body-md text-on-surface">
-                <div>
-                  <span className="text-on-surface-variant text-[13px] block mb-2">Preferred Commodities</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(formData.preferredVegetables.length > 0 ? formData.preferredVegetables : ['Tomatoes', 'Potatoes', 'Onions', 'Capsicum']).map(item => (
-                      <span key={item} className="px-3 py-1 bg-surface-container-lowest text-secondary rounded-lg text-[12px] font-semibold border border-secondary/20">
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between py-1 border-b border-outline-variant/20">
-                    <span className="text-on-surface-variant text-[13px]">Typical Purchase Volume</span>
-                    <span className="font-semibold text-right">{formData.typicalPurchaseQuantity || '5 Tons'}</span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-outline-variant/20">
-                    <span className="text-on-surface-variant text-[13px]">Minimum Order Quantity</span>
-                    <span className="font-semibold text-right">{formData.minimumOrderQuantity || '500 kg'}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-on-surface-variant text-[13px]">Accepted Quality Grade</span>
-                    <span className="font-semibold text-right">{formData.preferredQuality || 'Grade A & Premium'}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
 
-          {/* Bottom Navigation & Account Options */}
+          {/* 5. Bottom Navigation & Account Options */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-outline-variant/30">
             <button
               onClick={() => navigate('/buyer/marketplace')}
               className="w-full sm:w-auto h-touch-target-min px-6 bg-surface-container text-on-surface font-label-sm font-semibold rounded-xl hover:bg-surface-container-high transition-colors flex items-center justify-center gap-2"
             >
-              <span className="material-symbols-outlined text-[18px]">storefront</span>
-              Back to Buyer Marketplace
+              <span className="material-symbols-outlined text-[18px]">shopping_cart</span>
+              Back to Marketplace
             </button>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -299,6 +309,15 @@ export const BuyerProfilePage: React.FC = () => {
                 className="flex-1 sm:flex-initial h-touch-target-min px-4 bg-surface-container-low text-on-surface-variant font-label-sm rounded-xl hover:bg-surface-container transition-colors"
               >
                 Switch to Farmer
+              </button>
+              <button
+                onClick={() => {
+                  switchRole('transporter');
+                  navigate('/transporter/dashboard');
+                }}
+                className="flex-1 sm:flex-initial h-touch-target-min px-4 bg-surface-container-low text-on-surface-variant font-label-sm rounded-xl hover:bg-surface-container transition-colors"
+              >
+                Switch to Transporter
               </button>
               <button
                 onClick={async () => {

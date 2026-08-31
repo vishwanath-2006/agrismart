@@ -6,7 +6,7 @@ import { TransporterProfileData } from '../../types';
 
 export const TransporterProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { transporterProfile, saveTransporterProfile, isProfileLoading, logout, switchRole } = useApp();
+  const { transporterProfile, saveTransporterProfile, isProfileLoading, logout, switchRole, activeOrder } = useApp();
 
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -116,6 +116,8 @@ export const TransporterProfilePage: React.FC = () => {
   // VIEW A: COMPLETED PROFILE SUMMARY (When completed and not actively editing)
   // =========================================================================
   if (formData.profileCompleted && !isEditing) {
+    const ongoingTrip = activeOrder && activeOrder.status !== 'COMPLETED' ? activeOrder : null;
+
     return (
       <AppLayout title="Transporter Profile" showBack onBack={() => navigate('/transporter/dashboard')}>
         <div className="flex flex-col w-full max-w-4xl mx-auto pb-16 gap-6">
@@ -127,7 +129,7 @@ export const TransporterProfilePage: React.FC = () => {
             </div>
           )}
 
-          {/* Profile Header Hero Card */}
+          {/* 1. Profile Header Hero Card */}
           <div className="bg-surface-container rounded-3xl p-6 shadow-sm border border-outline-variant/30 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
             <div className="flex items-center gap-4 relative z-10">
               <div className="relative">
@@ -142,22 +144,25 @@ export const TransporterProfilePage: React.FC = () => {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="font-headline-lg-mobile md:font-headline-lg text-on-surface font-bold">
-                    {formData.fullName || 'Transporter Profile'}
+                    {formData.fullName || 'Marcus Vance'}
                   </h1>
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-tertiary text-on-tertiary shadow-sm">
                     <span className="material-symbols-outlined text-[14px]">verified</span>
-                    Verified Logistics Fleet
+                    Transporter
+                  </span>
+                  <span className="text-[10px] font-semibold text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded-full">
+                    Demo vehicle &amp; driver profile
                   </span>
                 </div>
                 <p className="font-body-md text-on-surface-variant mt-0.5">
-                  Plate: <span className="font-mono font-bold text-on-surface">{formData.vehicleRegistrationNumber || 'KA-09-E-4421'}</span> • +91 {formData.phone || '97411 98765'}
+                  Plate: <span className="font-mono font-bold text-on-surface">{formData.vehicleRegistrationNumber || 'KA-09-E-4421'}</span> • Base: {formData.currentLocation || 'Karnataka'}
                 </p>
                 <div className="flex items-center gap-2 mt-2">
                   <span className="text-[12px] font-semibold text-tertiary bg-tertiary-fixed/30 px-3 py-0.5 rounded-full">
                     Profile 100% Complete
                   </span>
                   <span className="text-[12px] text-on-surface-variant font-medium">
-                    {formData.vehicleType || '4-Wheeler Tempo Reefer'} • Base: {formData.currentLocation || 'Mandya'}
+                    {formData.vehicleType || 'Tata 407 Reefer'}
                   </span>
                 </div>
               </div>
@@ -182,13 +187,14 @@ export const TransporterProfilePage: React.FC = () => {
             </div>
           </div>
 
-          {/* 4-Stat Overview Cards */}
+          {/* 2. Key Transporter Overview Metrics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card">
               <p className="text-[12px] font-medium text-on-surface-variant">Rate / km</p>
               <p className="text-title-md font-bold text-tertiary mt-1">
                 ₹{formData.transportChargePerKm || 22} / km
               </p>
+              <span className="text-[10px] text-on-surface-variant">Demo rate</span>
             </div>
             <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card">
               <p className="text-[12px] font-medium text-on-surface-variant">Payload Capacity</p>
@@ -197,33 +203,33 @@ export const TransporterProfilePage: React.FC = () => {
               </p>
             </div>
             <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card">
-              <p className="text-[12px] font-medium text-on-surface-variant">Min Trip Charge</p>
-              <p className="text-title-md font-bold text-on-surface mt-1">
-                ₹{formData.minimumTripCharge || 1800}
+              <p className="text-[12px] font-medium text-on-surface-variant">Active Delivery</p>
+              <p className="text-title-md font-bold text-primary mt-1">
+                {ongoingTrip ? '1 Trip' : 'None'}
               </p>
             </div>
             <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card">
-              <p className="text-[12px] font-medium text-on-surface-variant">Status</p>
-              <p className="text-title-md font-bold text-primary mt-1 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                Active
+              <p className="text-[12px] font-medium text-on-surface-variant">Reliability Score</p>
+              <p className="text-title-md font-bold text-on-surface mt-1">
+                4.96 / 5.0
               </p>
+              <span className="text-[10px] text-on-surface-variant">Demo score</span>
             </div>
           </div>
 
-          {/* Information Sections Grid */}
+          {/* 3. Information Details Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* 1. Personal & Contact Details */}
+            {/* Personal & Contact Details */}
             <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3">
               <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">person</span>
-                Personal &amp; Contact
+                Personal &amp; Contact Details
               </h3>
 
               <div className="space-y-2 text-body-md text-on-surface">
                 <div className="flex justify-between py-1 border-b border-outline-variant/20">
                   <span className="text-on-surface-variant text-[13px]">Full Name</span>
-                  <span className="font-semibold text-right">{formData.fullName || 'Manjunath Gowda'}</span>
+                  <span className="font-semibold text-right">{formData.fullName || 'Marcus Vance'}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-outline-variant/20">
                   <span className="text-on-surface-variant text-[13px]">Phone Number</span>
@@ -231,7 +237,7 @@ export const TransporterProfilePage: React.FC = () => {
                 </div>
                 <div className="flex justify-between py-1 border-b border-outline-variant/20">
                   <span className="text-on-surface-variant text-[13px]">Email Address</span>
-                  <span className="font-semibold text-right truncate max-w-[200px]">{formData.email || 'logistics@gowdatransports.com'}</span>
+                  <span className="font-semibold text-right truncate max-w-[180px]">{formData.email || 'logistics@vancetransport.com'}</span>
                 </div>
                 <div className="flex justify-between py-1">
                   <span className="text-on-surface-variant text-[13px]">Base Dispatch Station</span>
@@ -240,7 +246,7 @@ export const TransporterProfilePage: React.FC = () => {
               </div>
             </div>
 
-            {/* 2. Vehicle Specifications */}
+            {/* Vehicle Specifications */}
             <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3">
               <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">local_shipping</span>
@@ -249,101 +255,32 @@ export const TransporterProfilePage: React.FC = () => {
 
               <div className="space-y-2 text-body-md text-on-surface">
                 <div className="flex justify-between py-1 border-b border-outline-variant/20">
-                  <span className="text-on-surface-variant text-[13px]">Vehicle Category</span>
-                  <span className="font-semibold text-right max-w-[200px] truncate">{formData.vehicleType || '4-Wheeler Tempo Reefer'}</span>
+                  <span className="text-on-surface-variant text-[13px]">Vehicle Model</span>
+                  <span className="font-semibold text-right">{formData.vehicleType || 'Tata 407 Reefer'}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-outline-variant/20">
-                  <span className="text-on-surface-variant text-[13px]">Registration Plate</span>
-                  <span className="font-mono font-bold text-right text-primary">{formData.vehicleRegistrationNumber || 'KA-09-E-4421'}</span>
+                  <span className="text-on-surface-variant text-[13px]">Registration Number</span>
+                  <span className="font-mono font-bold text-right">{formData.vehicleRegistrationNumber || 'KA-09-E-4421'}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-outline-variant/20">
-                  <span className="text-on-surface-variant text-[13px]">Vehicle Model &amp; Age</span>
-                  <span className="font-semibold text-right">{formData.vehicleModel || 'Tata 407 LPT'} ({formData.vehicleAge || '3 Years'})</span>
+                  <span className="text-on-surface-variant text-[13px]">Payload Capacity</span>
+                  <span className="font-semibold text-right">{formData.vehicleCapacity || '4.0 Tons'}</span>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-on-surface-variant text-[13px]">Payload Capacity</span>
-                  <span className="font-semibold text-right">{formData.vehicleCapacity || '4.0 Metric Tons'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Operating Routes & Corridors */}
-            <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3 md:col-span-2">
-              <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">route</span>
-                Operating Corridors &amp; Dispatch Areas
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-body-md text-on-surface">
-                <div>
-                  <span className="text-on-surface-variant text-[13px] block mb-1.5 font-medium">Primary Highway Corridor</span>
-                  <p className="font-semibold text-on-surface mb-3">{formData.operatingLocation || 'Mysore - Bangalore Highway Corridor'}</p>
-
-                  <span className="text-on-surface-variant text-[13px] block mb-1.5 font-medium">Preferred Pickup Areas</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(formData.preferredPickupAreas.length > 0 ? formData.preferredPickupAreas : ['Mysore', 'Mandya', 'Hunsur', 'Channapatna']).map(area => (
-                      <span key={area} className="px-2.5 py-1 bg-surface-container-lowest text-primary rounded-lg text-[12px] font-semibold border border-primary/20">
-                        {area}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <span className="text-on-surface-variant text-[13px] block mb-1.5 font-medium">Drop Mandis &amp; Terminals</span>
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {(formData.preferredDeliveryMarkets.length > 0 ? formData.preferredDeliveryMarkets : ['Bangalore KR Market', 'Yeshwantpur APMC', 'Hosur Terminal']).map(mkt => (
-                      <span key={mkt} className="px-2.5 py-1 bg-surface-container-lowest text-secondary rounded-lg text-[12px] font-semibold border border-secondary/20">
-                        {mkt}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="space-y-1.5 border-t border-outline-variant/20 pt-2 text-[13px]">
-                    <div className="flex justify-between">
-                      <span className="text-on-surface-variant">Working Days:</span>
-                      <span className="font-semibold">{formData.workingDays || 'All 7 Days'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-on-surface-variant">Available Timing:</span>
-                      <span className="font-semibold">{formData.preferredPickupTime || 'Morning & Evening Dispatches'}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 4. Pricing & Tariffs */}
-            <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3 md:col-span-2">
-              <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">local_atm</span>
-                Tariff &amp; Charges Breakdown
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/30">
-                  <span className="text-[12px] text-on-surface-variant font-medium">Standard Per-km Rate</span>
-                  <p className="text-title-md font-bold text-tertiary mt-1">₹{formData.transportChargePerKm || 22} / km</p>
-                </div>
-                <div className="bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/30">
-                  <span className="text-[12px] text-on-surface-variant font-medium">Minimum Base Fare</span>
-                  <p className="text-title-md font-bold text-on-surface mt-1">₹{formData.minimumTripCharge || 1800}</p>
-                </div>
-                <div className="bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/30">
-                  <span className="text-[12px] text-on-surface-variant font-medium">Loading / Handling Tariff</span>
-                  <p className="text-title-md font-bold text-on-surface mt-1">₹{formData.additionalLoadingCharge || 350}</p>
+                  <span className="text-on-surface-variant text-[13px]">Minimum Trip Charge</span>
+                  <span className="font-semibold text-right">₹{formData.minimumTripCharge || 1800}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Bottom Navigation & Account Options */}
+          {/* 4. Bottom Navigation & Account Options */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-outline-variant/30">
             <button
               onClick={() => navigate('/transporter/dashboard')}
               className="w-full sm:w-auto h-touch-target-min px-6 bg-surface-container text-on-surface font-label-sm font-semibold rounded-xl hover:bg-surface-container-high transition-colors flex items-center justify-center gap-2"
             >
-              <span className="material-symbols-outlined text-[18px]">dashboard</span>
+              <span className="material-symbols-outlined text-[18px]">local_shipping</span>
               Back to Transporter Dashboard
             </button>
 
@@ -356,6 +293,15 @@ export const TransporterProfilePage: React.FC = () => {
                 className="flex-1 sm:flex-initial h-touch-target-min px-4 bg-surface-container-low text-on-surface-variant font-label-sm rounded-xl hover:bg-surface-container transition-colors"
               >
                 Switch to Farmer
+              </button>
+              <button
+                onClick={() => {
+                  switchRole('buyer');
+                  navigate('/buyer/marketplace');
+                }}
+                className="flex-1 sm:flex-initial h-touch-target-min px-4 bg-surface-container-low text-on-surface-variant font-label-sm rounded-xl hover:bg-surface-container transition-colors"
+              >
+                Switch to Buyer
               </button>
               <button
                 onClick={async () => {
