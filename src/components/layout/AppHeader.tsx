@@ -57,8 +57,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   };
 
   return (
-    <header className="fixed top-0 w-full z-50 bg-surface/90 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.04)] border-b border-outline-variant/20">
-      <div className="max-w-7xl mx-auto h-16 px-margin-mobile md:px-margin-desktop flex items-center justify-between gap-unit">
+    <header className="sticky top-0 w-full z-40 bg-surface/90 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.04)] border-b border-outline-variant/20">
+      <div className="w-full h-16 px-4 md:px-6 flex items-center justify-between gap-unit">
         {/* Left Side */}
         <div className="flex items-center gap-unit">
           {showBack ? (

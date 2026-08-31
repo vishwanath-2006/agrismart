@@ -38,7 +38,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         />
 
         {/* Scrollable Page Body */}
-        <main className={`w-full mx-auto pt-16 pb-24 md:pb-12 ${maxWidthClass} px-margin-mobile md:px-margin-desktop min-h-[calc(100vh-4rem)]`}>
+        <main className={`w-full mx-auto pt-4 md:pt-6 pb-24 md:pb-12 ${maxWidthClass} px-margin-mobile md:px-margin-desktop min-h-[calc(100vh-4rem)]`}>
           {children}
         </main>
 

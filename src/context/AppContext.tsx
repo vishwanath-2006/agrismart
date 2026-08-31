@@ -38,6 +38,7 @@ interface AppContextType {
   supabaseUser: User | null;
   supabaseSession: Session | null;
   isAuthLoading: boolean;
+  isProfileLoading: boolean;
   loginWithGoogle: () => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
   assignRole: (role: UserRole) => Promise<boolean>;
@@ -111,6 +112,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
   const [supabaseSession, setSupabaseSession] = useState<Session | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+  const [isProfileLoading, setIsProfileLoading] = useState<boolean>(false);
 
   // Load persisted role
   const [currentRole, setCurrentRole] = useState<UserRole>(() => {
@@ -239,7 +241,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   // Load profile data from Supabase
-  const loadRoleProfiles = async (userId: string) => {
+  const loadRoleProfiles = async (userId: string, authUserMeta?: any) => {
+    setIsProfileLoading(true);
     try {
       const [farmerRes, buyerRes, transpRes] = await Promise.allSettled([
         supabase.from('farmer_profiles').select('*').eq('user_id', userId).single(),
@@ -247,40 +250,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         supabase.from('transporter_profiles').select('*').eq('user_id', userId).single()
       ]);
 
+      const userName = authUserMeta?.full_name || authUserMeta?.name || '';
+      const userPhone = authUserMeta?.phone || '';
+      const userEmail = authUserMeta?.email || '';
+
       if (farmerRes.status === 'fulfilled' && farmerRes.value.data) {
         const d = farmerRes.value.data;
         const loaded: FarmerProfileData = {
           id: d.id,
           userId: d.user_id,
-          fullName: d.full_name || '',
-          phone: d.phone || '',
+          fullName: d.full_name || userName || 'Farmer',
+          phone: d.phone || userPhone || '',
           farmLocation: d.farm_location || '',
           village: d.village || '',
           district: d.district || '',
-          state: d.state || '',
+          state: d.state || 'Karnataka',
           pincode: d.pincode || '',
-          latitude: d.latitude,
-          longitude: d.longitude,
+          latitude: d.latitude ? Number(d.latitude) : undefined,
+          longitude: d.longitude ? Number(d.longitude) : undefined,
           farmSize: Number(d.farm_size) || 0,
           farmSizeUnit: d.farm_size_unit || 'Acres',
           mainCrops: d.main_crops ? d.main_crops.split(', ') : [],
           otherCrops: d.other_crops || '',
-          farmingExperience: d.farming_experience || '',
-          farmingType: d.farming_type || '',
+          farmingExperience: d.farming_experience || '4 - 7 Years',
+          farmingType: d.farming_type || 'Organic Certified',
           preferredMarkets: d.preferred_markets ? d.preferred_markets.split(', ') : [],
           primaryMarket: d.primary_market || '',
           secondaryMarket: d.secondary_market || '',
-          preferredSellingDistance: d.preferred_selling_distance || '',
+          preferredSellingDistance: d.preferred_selling_distance || 'Within 50 km',
           typicalProduceQuantity: d.typical_produce_quantity || '',
-          sellingFrequency: d.selling_frequency || '',
-          preferredBuyerType: d.preferred_buyer_type || '',
-          expectedPricePreference: Number(d.expected_price_preference) || undefined,
-          minimumPricePreference: Number(d.minimum_price_preference) || undefined,
+          sellingFrequency: d.selling_frequency || 'Weekly',
+          preferredBuyerType: d.preferred_buyer_type || 'Wholesale Traders',
+          expectedPricePreference: d.expected_price_preference ? Number(d.expected_price_preference) : undefined,
+          minimumPricePreference: d.minimum_price_preference ? Number(d.minimum_price_preference) : undefined,
           profileCompleted: Boolean(d.profile_completed),
-          completionPercentage: d.completion_percentage || 25
+          completionPercentage: d.completion_percentage ?? (d.profile_completed ? 100 : 25)
         };
         setFarmerProfile(loaded);
         localStorage.setItem('agrismart_farmer_profile', JSON.stringify(loaded));
+      } else if (userId) {
+        // User logged in but no profile saved yet
+        setFarmerProfile(prev => {
+          const fresh: FarmerProfileData = {
+            ...prev,
+            userId,
+            fullName: userName || prev.fullName,
+            phone: userPhone || prev.phone,
+            profileCompleted: false,
+            completionPercentage: 25
+          };
+          localStorage.setItem('agrismart_farmer_profile', JSON.stringify(fresh));
+          return fresh;
+        });
       }
 
       if (buyerRes.status === 'fulfilled' && buyerRes.value.data) {
@@ -288,36 +309,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const loaded: BuyerProfileData = {
           id: d.id,
           userId: d.user_id,
-          fullName: d.full_name || '',
-          phone: d.phone || '',
-          email: d.email || '',
+          fullName: d.full_name || userName || 'Buyer',
+          phone: d.phone || userPhone || '',
+          email: d.email || userEmail || '',
           businessName: d.business_name || '',
-          businessType: d.business_type || '',
+          businessType: d.business_type || 'Wholesaler',
           businessLocation: d.business_location || '',
           city: d.city || '',
           district: d.district || '',
-          state: d.state || '',
+          state: d.state || 'Karnataka',
           pincode: d.pincode || '',
-          latitude: d.latitude,
-          longitude: d.longitude,
+          latitude: d.latitude ? Number(d.latitude) : undefined,
+          longitude: d.longitude ? Number(d.longitude) : undefined,
           receivingAddress: d.receiving_address || '',
           primaryReceivingMarket: d.primary_receiving_market || '',
           secondaryReceivingMarket: d.secondary_receiving_market || '',
-          preferredDeliveryWindow: d.preferred_delivery_window || '',
+          preferredDeliveryWindow: d.preferred_delivery_window || 'Early Morning (5 AM - 9 AM)',
           preferredVegetables: d.preferred_vegetables ? d.preferred_vegetables.split(', ') : [],
           preferredQuantity: d.preferred_quantity || '',
           minimumOrderQuantity: d.minimum_order_quantity || '',
           typicalPurchaseQuantity: d.typical_purchase_quantity || '',
-          buyingFrequency: d.buying_frequency || '',
-          preferredQuality: d.preferred_quality || '',
+          buyingFrequency: d.buying_frequency || 'Daily',
+          preferredQuality: d.preferred_quality || 'Grade A & Premium',
           preferredPriceRange: d.preferred_price_range || '',
           preferredMarkets: d.preferred_markets ? d.preferred_markets.split(', ') : [],
-          preferredDeliveryDistance: d.preferred_delivery_distance || '',
+          preferredDeliveryDistance: d.preferred_delivery_distance || 'Within 100 km',
           profileCompleted: Boolean(d.profile_completed),
-          completionPercentage: d.completion_percentage || 25
+          completionPercentage: d.completion_percentage ?? (d.profile_completed ? 100 : 33)
         };
         setBuyerProfile(loaded);
         localStorage.setItem('agrismart_buyer_profile', JSON.stringify(loaded));
+      } else if (userId) {
+        setBuyerProfile(prev => {
+          const fresh: BuyerProfileData = {
+            ...prev,
+            userId,
+            fullName: userName || prev.fullName,
+            email: userEmail || prev.email,
+            phone: userPhone || prev.phone,
+            profileCompleted: false,
+            completionPercentage: 33
+          };
+          localStorage.setItem('agrismart_buyer_profile', JSON.stringify(fresh));
+          return fresh;
+        });
       }
 
       if (transpRes.status === 'fulfilled' && transpRes.value.data) {
@@ -325,34 +360,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const loaded: TransporterProfileData = {
           id: d.id,
           userId: d.user_id,
-          fullName: d.full_name || '',
-          phone: d.phone || '',
-          email: d.email || '',
+          fullName: d.full_name || userName || 'Transporter',
+          phone: d.phone || userPhone || '',
+          email: d.email || userEmail || '',
           currentLocation: d.current_location || '',
-          latitude: d.latitude,
-          longitude: d.longitude,
-          vehicleType: d.vehicle_type || '',
+          latitude: d.latitude ? Number(d.latitude) : undefined,
+          longitude: d.longitude ? Number(d.longitude) : undefined,
+          vehicleType: d.vehicle_type || '4-Wheeler Tempo Reefer (Cold Chain)',
           vehicleRegistrationNumber: d.vehicle_registration_number || '',
           vehicleCapacity: d.vehicle_capacity || '',
           vehicleModel: d.vehicle_model || '',
-          vehicleAge: d.vehicle_age || '',
+          vehicleAge: d.vehicle_age || '1 - 3 Years',
           operatingLocation: d.operating_location || '',
           preferredPickupAreas: d.preferred_pickup_areas ? d.preferred_pickup_areas.split(', ') : [],
           preferredDeliveryMarkets: d.preferred_delivery_markets ? d.preferred_delivery_markets.split(', ') : [],
-          availability: d.availability || '',
-          workingDays: d.working_days || '',
-          preferredPickupTime: d.preferred_pickup_time || '',
-          transportChargePerKm: Number(d.transport_charge_per_km) || 20,
-          minimumTripCharge: Number(d.minimum_trip_charge) || 1500,
-          additionalLoadingCharge: Number(d.additional_loading_charge) || 300,
+          availability: d.availability || 'Available Now (GPS Active)',
+          workingDays: d.working_days || 'All 7 Days',
+          preferredPickupTime: d.preferred_pickup_time || 'Morning & Evening Dispatches',
+          transportChargePerKm: d.transport_charge_per_km ? Number(d.transport_charge_per_km) : 22,
+          minimumTripCharge: d.minimum_trip_charge ? Number(d.minimum_trip_charge) : 1800,
+          additionalLoadingCharge: d.additional_loading_charge ? Number(d.additional_loading_charge) : 350,
           profileCompleted: Boolean(d.profile_completed),
-          completionPercentage: d.completion_percentage || 20
+          completionPercentage: d.completion_percentage ?? (d.profile_completed ? 100 : 25)
         };
         setTransporterProfile(loaded);
         localStorage.setItem('agrismart_transporter_profile', JSON.stringify(loaded));
+      } else if (userId) {
+        setTransporterProfile(prev => {
+          const fresh: TransporterProfileData = {
+            ...prev,
+            userId,
+            fullName: userName || prev.fullName,
+            phone: userPhone || prev.phone,
+            email: userEmail || prev.email,
+            profileCompleted: false,
+            completionPercentage: 25
+          };
+          localStorage.setItem('agrismart_transporter_profile', JSON.stringify(fresh));
+          return fresh;
+        });
       }
     } catch (err) {
       console.warn('Load role profiles notice:', err);
+    } finally {
+      setIsProfileLoading(false);
     }
   };
 
@@ -377,7 +428,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             localStorage.setItem('agrismart_role', profile.role);
           }
 
-          loadRoleProfiles(session.user.id);
+          loadRoleProfiles(session.user.id, session.user.user_metadata);
         }
       } catch (err) {
         console.warn('Supabase auth getSession warning:', err);
@@ -405,7 +456,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             localStorage.setItem('agrismart_role', profile.role);
           }
 
-          loadRoleProfiles(session.user.id);
+          loadRoleProfiles(session.user.id, session.user.user_metadata);
         } catch (err) {
           console.warn('Profile fetch warning:', err);
         }
@@ -995,6 +1046,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         supabaseUser,
         supabaseSession,
         isAuthLoading,
+        isProfileLoading,
         loginWithGoogle,
         logout,
         assignRole,

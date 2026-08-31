@@ -6,8 +6,9 @@ import { TransporterProfileData } from '../../types';
 
 export const TransporterProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const { transporterProfile, saveTransporterProfile, logout, switchRole } = useApp();
+  const { transporterProfile, saveTransporterProfile, isProfileLoading, logout, switchRole } = useApp();
 
+  const [isEditing, setIsEditing] = useState<boolean>(false);
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState(false);
@@ -20,14 +21,8 @@ export const TransporterProfilePage: React.FC = () => {
     setFormData(transporterProfile);
   }, [transporterProfile]);
 
-  const calculatePercentage = (data: TransporterProfileData): number => {
-    let score = 0;
-    if (data.fullName && data.phone && data.currentLocation) score += 25;
-    if (data.vehicleType && data.vehicleRegistrationNumber && data.vehicleCapacity) score += 25;
-    if (data.operatingLocation && data.preferredPickupAreas.length > 0) score += 25;
-    if (data.transportChargePerKm && data.minimumTripCharge) score += 25;
-    return score;
-  };
+  const totalSteps = 4;
+  const onboardingProgressPct = Math.round((currentStep / totalSteps) * 100);
 
   const handlePickupAreaToggle = (area: string) => {
     const exists = formData.preferredPickupAreas.includes(area);
@@ -77,51 +72,340 @@ export const TransporterProfilePage: React.FC = () => {
 
   const handleSaveStep = async (nextStep?: number, markComplete: boolean = false) => {
     setIsSaving(true);
-    const pct = calculatePercentage(formData);
-    const isComplete = markComplete || pct >= 75;
+    const isComplete = markComplete || currentStep === totalSteps || formData.profileCompleted;
 
     const toSave: TransporterProfileData = {
       ...formData,
-      completionPercentage: pct,
+      completionPercentage: isComplete ? 100 : onboardingProgressPct,
       profileCompleted: isComplete
     };
 
-    await saveTransporterProfile(toSave);
+    const success = await saveTransporterProfile(toSave);
     setIsSaving(false);
-    setSaveSuccessNotice(true);
-    setTimeout(() => setSaveSuccessNotice(false), 2500);
 
-    if (nextStep) {
-      setCurrentStep(nextStep);
+    if (success) {
+      setSaveSuccessNotice(true);
+      setTimeout(() => setSaveSuccessNotice(false), 3000);
+
+      if (isEditing) {
+        setIsEditing(false);
+      } else if (markComplete || currentStep === totalSteps) {
+        // Switch to completed profile summary
+        setIsEditing(false);
+      } else if (nextStep) {
+        setCurrentStep(nextStep);
+      }
     }
   };
 
   const availablePickupAreas = ['Mysore', 'Mandya', 'Hunsur', 'Channapatna', 'Kolar', 'Ramanagara', 'Davanagere', 'Tumkur'];
   const availableDeliveryMarkets = ['Bangalore KR Market', 'Yeshwantpur APMC', 'Hosur Terminal', 'Chennai Koyambedu', 'Pune Gultekdi', 'Hyderabad Bowenpally'];
 
+  if (isProfileLoading) {
+    return (
+      <AppLayout title="Transporter Profile" showBack onBack={() => navigate('/transporter/dashboard')}>
+        <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
+          <div className="w-10 h-10 border-3 border-tertiary border-t-transparent rounded-full animate-spin" />
+          <p className="font-body-md text-on-surface-variant">Loading your transporter fleet profile from Supabase...</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // =========================================================================
+  // VIEW A: COMPLETED PROFILE SUMMARY (When completed and not actively editing)
+  // =========================================================================
+  if (formData.profileCompleted && !isEditing) {
+    return (
+      <AppLayout title="Transporter Profile" showBack onBack={() => navigate('/transporter/dashboard')}>
+        <div className="flex flex-col w-full max-w-4xl mx-auto pb-16 gap-6">
+          {/* Save Notice Toast */}
+          {saveSuccessNotice && (
+            <div className="p-3.5 bg-tertiary-fixed/30 text-tertiary rounded-2xl border border-tertiary/20 text-label-sm font-semibold flex items-center gap-2.5 animate-in fade-in">
+              <span className="material-symbols-outlined text-[20px]">check_circle</span>
+              <span>Transporter fleet profile updated and saved to Supabase successfully.</span>
+            </div>
+          )}
+
+          {/* Profile Header Hero Card */}
+          <div className="bg-surface-container rounded-3xl p-6 shadow-sm border border-outline-variant/30 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center border-2 border-tertiary shadow-sm text-2xl font-bold">
+                  <span className="material-symbols-outlined text-4xl">local_shipping</span>
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center shadow-sm">
+                  <span className="material-symbols-outlined text-[14px]">verified</span>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="font-headline-lg-mobile md:font-headline-lg text-on-surface font-bold">
+                    {formData.fullName || 'Transporter Profile'}
+                  </h1>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-tertiary text-on-tertiary shadow-sm">
+                    <span className="material-symbols-outlined text-[14px]">verified</span>
+                    Verified Logistics Fleet
+                  </span>
+                </div>
+                <p className="font-body-md text-on-surface-variant mt-0.5">
+                  Plate: <span className="font-mono font-bold text-on-surface">{formData.vehicleRegistrationNumber || 'KA-09-E-4421'}</span> • +91 {formData.phone || '97411 98765'}
+                </p>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-[12px] font-semibold text-tertiary bg-tertiary-fixed/30 px-3 py-0.5 rounded-full">
+                    Profile 100% Complete
+                  </span>
+                  <span className="text-[12px] text-on-surface-variant font-medium">
+                    {formData.vehicleType || '4-Wheeler Tempo Reefer'} • Base: {formData.currentLocation || 'Mandya'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex items-center gap-2.5 w-full md:w-auto relative z-10">
+              <button
+                onClick={() => setIsEditing(true)}
+                className="flex-1 md:flex-initial h-touch-target-min px-5 bg-primary text-on-primary rounded-xl font-label-sm font-semibold hover:bg-primary-container active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">edit</span>
+                Edit Profile
+              </button>
+              <button
+                onClick={() => navigate('/transporter/dashboard')}
+                className="flex-1 md:flex-initial h-touch-target-min px-5 bg-surface-container-lowest text-tertiary border border-tertiary/30 rounded-xl font-label-sm font-semibold hover:bg-surface-container-high active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">dashboard</span>
+                Dashboard
+              </button>
+            </div>
+          </div>
+
+          {/* 4-Stat Overview Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card">
+              <p className="text-[12px] font-medium text-on-surface-variant">Rate / km</p>
+              <p className="text-title-md font-bold text-tertiary mt-1">
+                ₹{formData.transportChargePerKm || 22} / km
+              </p>
+            </div>
+            <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card">
+              <p className="text-[12px] font-medium text-on-surface-variant">Payload Capacity</p>
+              <p className="text-title-md font-bold text-on-surface mt-1 truncate">
+                {formData.vehicleCapacity || '4.0 Tons'}
+              </p>
+            </div>
+            <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card">
+              <p className="text-[12px] font-medium text-on-surface-variant">Min Trip Charge</p>
+              <p className="text-title-md font-bold text-on-surface mt-1">
+                ₹{formData.minimumTripCharge || 1800}
+              </p>
+            </div>
+            <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card">
+              <p className="text-[12px] font-medium text-on-surface-variant">Status</p>
+              <p className="text-title-md font-bold text-primary mt-1 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                Active
+              </p>
+            </div>
+          </div>
+
+          {/* Information Sections Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* 1. Personal & Contact Details */}
+            <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3">
+              <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">person</span>
+                Personal &amp; Contact
+              </h3>
+
+              <div className="space-y-2 text-body-md text-on-surface">
+                <div className="flex justify-between py-1 border-b border-outline-variant/20">
+                  <span className="text-on-surface-variant text-[13px]">Full Name</span>
+                  <span className="font-semibold text-right">{formData.fullName || 'Manjunath Gowda'}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-outline-variant/20">
+                  <span className="text-on-surface-variant text-[13px]">Phone Number</span>
+                  <span className="font-semibold text-right">+91 {formData.phone || '97411 98765'}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-outline-variant/20">
+                  <span className="text-on-surface-variant text-[13px]">Email Address</span>
+                  <span className="font-semibold text-right truncate max-w-[200px]">{formData.email || 'logistics@gowdatransports.com'}</span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-on-surface-variant text-[13px]">Base Dispatch Station</span>
+                  <span className="font-semibold text-right">{formData.currentLocation || 'Mandya Central Bypass'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Vehicle Specifications */}
+            <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3">
+              <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">local_shipping</span>
+                Vehicle Specifications
+              </h3>
+
+              <div className="space-y-2 text-body-md text-on-surface">
+                <div className="flex justify-between py-1 border-b border-outline-variant/20">
+                  <span className="text-on-surface-variant text-[13px]">Vehicle Category</span>
+                  <span className="font-semibold text-right max-w-[200px] truncate">{formData.vehicleType || '4-Wheeler Tempo Reefer'}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-outline-variant/20">
+                  <span className="text-on-surface-variant text-[13px]">Registration Plate</span>
+                  <span className="font-mono font-bold text-right text-primary">{formData.vehicleRegistrationNumber || 'KA-09-E-4421'}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-outline-variant/20">
+                  <span className="text-on-surface-variant text-[13px]">Vehicle Model &amp; Age</span>
+                  <span className="font-semibold text-right">{formData.vehicleModel || 'Tata 407 LPT'} ({formData.vehicleAge || '3 Years'})</span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-on-surface-variant text-[13px]">Payload Capacity</span>
+                  <span className="font-semibold text-right">{formData.vehicleCapacity || '4.0 Metric Tons'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Operating Routes & Corridors */}
+            <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3 md:col-span-2">
+              <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">route</span>
+                Operating Corridors &amp; Dispatch Areas
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-body-md text-on-surface">
+                <div>
+                  <span className="text-on-surface-variant text-[13px] block mb-1.5 font-medium">Primary Highway Corridor</span>
+                  <p className="font-semibold text-on-surface mb-3">{formData.operatingLocation || 'Mysore - Bangalore Highway Corridor'}</p>
+
+                  <span className="text-on-surface-variant text-[13px] block mb-1.5 font-medium">Preferred Pickup Areas</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(formData.preferredPickupAreas.length > 0 ? formData.preferredPickupAreas : ['Mysore', 'Mandya', 'Hunsur', 'Channapatna']).map(area => (
+                      <span key={area} className="px-2.5 py-1 bg-surface-container-lowest text-primary rounded-lg text-[12px] font-semibold border border-primary/20">
+                        {area}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-on-surface-variant text-[13px] block mb-1.5 font-medium">Drop Mandis &amp; Terminals</span>
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {(formData.preferredDeliveryMarkets.length > 0 ? formData.preferredDeliveryMarkets : ['Bangalore KR Market', 'Yeshwantpur APMC', 'Hosur Terminal']).map(mkt => (
+                      <span key={mkt} className="px-2.5 py-1 bg-surface-container-lowest text-secondary rounded-lg text-[12px] font-semibold border border-secondary/20">
+                        {mkt}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="space-y-1.5 border-t border-outline-variant/20 pt-2 text-[13px]">
+                    <div className="flex justify-between">
+                      <span className="text-on-surface-variant">Working Days:</span>
+                      <span className="font-semibold">{formData.workingDays || 'All 7 Days'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-on-surface-variant">Available Timing:</span>
+                      <span className="font-semibold">{formData.preferredPickupTime || 'Morning & Evening Dispatches'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Pricing & Tariffs */}
+            <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3 md:col-span-2">
+              <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">local_atm</span>
+                Tariff &amp; Charges Breakdown
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/30">
+                  <span className="text-[12px] text-on-surface-variant font-medium">Standard Per-km Rate</span>
+                  <p className="text-title-md font-bold text-tertiary mt-1">₹{formData.transportChargePerKm || 22} / km</p>
+                </div>
+                <div className="bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/30">
+                  <span className="text-[12px] text-on-surface-variant font-medium">Minimum Base Fare</span>
+                  <p className="text-title-md font-bold text-on-surface mt-1">₹{formData.minimumTripCharge || 1800}</p>
+                </div>
+                <div className="bg-surface-container-lowest p-3.5 rounded-xl border border-outline-variant/30">
+                  <span className="text-[12px] text-on-surface-variant font-medium">Loading / Handling Tariff</span>
+                  <p className="text-title-md font-bold text-on-surface mt-1">₹{formData.additionalLoadingCharge || 350}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Navigation & Account Options */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-outline-variant/30">
+            <button
+              onClick={() => navigate('/transporter/dashboard')}
+              className="w-full sm:w-auto h-touch-target-min px-6 bg-surface-container text-on-surface font-label-sm font-semibold rounded-xl hover:bg-surface-container-high transition-colors flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">dashboard</span>
+              Back to Transporter Dashboard
+            </button>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => {
+                  switchRole('farmer');
+                  navigate('/farmer/dashboard');
+                }}
+                className="flex-1 sm:flex-initial h-touch-target-min px-4 bg-surface-container-low text-on-surface-variant font-label-sm rounded-xl hover:bg-surface-container transition-colors"
+              >
+                Switch to Farmer
+              </button>
+              <button
+                onClick={async () => {
+                  await logout();
+                  navigate('/login');
+                }}
+                className="flex-1 sm:flex-initial h-touch-target-min px-4 bg-error-container/20 text-error font-label-sm rounded-xl hover:bg-error-container/30 transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // =========================================================================
+  // VIEW B & C: EDIT MODE OR ONBOARDING WIZARD
+  // =========================================================================
   return (
-    <AppLayout title="Transporter Profile" showBack onBack={() => navigate('/transporter/dashboard')}>
+    <AppLayout
+      title={isEditing ? 'Edit Transporter Profile' : 'Transporter Onboarding'}
+      showBack
+      onBack={() => {
+        if (isEditing) setIsEditing(false);
+        else navigate('/transporter/dashboard');
+      }}
+    >
       <div className="flex flex-col w-full max-w-2xl mx-auto pb-12">
-        {/* Step Progress Header */}
+        {/* Header Title & Progress Indicator */}
         <div className="mb-6 mt-2 bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/20 shadow-card">
           <div className="flex items-center justify-between mb-2">
             <div className="flex flex-col">
               <span className="font-label-sm text-primary font-bold uppercase tracking-wider text-[12px]">
-                Step {currentStep} of 4
+                {isEditing ? 'Edit Mode' : `Step ${currentStep} of ${totalSteps}`}
               </span>
               <span className="font-title-md text-title-md font-bold text-on-surface">
-                {currentStep === 1 && 'Personal & Base Location'}
-                {currentStep === 2 && 'Vehicle Details & Capacity'}
-                {currentStep === 3 && 'Service Area & Availability'}
-                {currentStep === 4 && 'Tariff Charges & Profile Activation'}
+                {currentStep === 1 && 'Personal & Base Location Details'}
+                {currentStep === 2 && 'Vehicle Specifications & Payload'}
+                {currentStep === 3 && 'Operating Corridors & Schedules'}
+                {currentStep === 4 && 'Tariff Charges & Fleet Activation'}
               </span>
             </div>
             <span className="font-label-sm font-bold text-tertiary bg-tertiary-fixed/30 px-3 py-1 rounded-full text-[12px]">
-              {calculatePercentage(formData)}% Complete
+              {isEditing ? 'Editing' : `${onboardingProgressPct}% Complete`}
             </span>
           </div>
 
-          {/* 4-Step Progress Bar */}
+          {/* Accurate 4-Step Progress Bar */}
           <div className="flex gap-1.5 h-2 w-full mt-2">
             {[1, 2, 3, 4].map((step) => (
               <div
@@ -137,13 +421,13 @@ export const TransporterProfilePage: React.FC = () => {
 
         {/* Save Notice Toast */}
         {saveSuccessNotice && (
-          <div className="mb-4 p-3 bg-primary-fixed/30 text-primary rounded-xl border border-primary/20 text-[13px] flex items-center gap-2 animate-in fade-in">
+          <div className="mb-4 p-3 bg-tertiary-fixed/30 text-tertiary rounded-xl border border-tertiary/20 text-[13px] flex items-center gap-2 animate-in fade-in">
             <span className="material-symbols-outlined text-[18px]">check_circle</span>
             <span>Transporter details saved to Supabase successfully.</span>
           </div>
         )}
 
-        {/* ================= STEP 1: PERSONAL & BASE LOCATION ================= */}
+        {/* STEP 1: PERSONAL & BASE LOCATION */}
         {currentStep === 1 && (
           <div className="flex flex-col gap-5">
             <div className="bg-surface-container rounded-2xl p-5 shadow-sm flex flex-col gap-4">
@@ -223,7 +507,6 @@ export const TransporterProfilePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex flex-col gap-2 pt-2">
               <button
                 type="button"
@@ -234,18 +517,20 @@ export const TransporterProfilePage: React.FC = () => {
                 <span>Continue to Vehicle Details</span>
                 <span className="material-symbols-outlined">arrow_forward</span>
               </button>
-              <button
-                type="button"
-                onClick={() => handleSaveStep()}
-                className="w-full h-touch-target-min bg-transparent text-primary font-label-sm font-semibold rounded-2xl hover:bg-primary/5 transition-colors"
-              >
-                Save &amp; Continue Later
-              </button>
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="w-full h-touch-target-min bg-surface-container text-on-surface-variant font-label-sm rounded-2xl"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
           </div>
         )}
 
-        {/* ================= STEP 2: VEHICLE DETAILS ================= */}
+        {/* STEP 2: VEHICLE DETAILS */}
         {currentStep === 2 && (
           <div className="flex flex-col gap-5">
             <div className="bg-surface-container rounded-2xl p-5 shadow-sm flex flex-col gap-4">
@@ -320,7 +605,6 @@ export const TransporterProfilePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex flex-col gap-2 pt-2">
               <button
                 type="button"
@@ -342,7 +626,7 @@ export const TransporterProfilePage: React.FC = () => {
           </div>
         )}
 
-        {/* ================= STEP 3: SERVICE AREA & AVAILABILITY ================= */}
+        {/* STEP 3: SERVICE AREA & AVAILABILITY */}
         {currentStep === 3 && (
           <div className="flex flex-col gap-5">
             <div className="bg-surface-container rounded-2xl p-5 shadow-sm flex flex-col gap-4">
@@ -362,9 +646,8 @@ export const TransporterProfilePage: React.FC = () => {
                 />
               </div>
 
-              {/* Preferred Pickup Areas Chips */}
               <div className="flex flex-col gap-2 pt-1">
-                <label className="font-label-sm text-on-surface font-medium">Preferred Pickup Areas (Farms &amp; Village Hubs)</label>
+                <label className="font-label-sm text-on-surface font-medium">Preferred Pickup Areas</label>
                 <div className="flex flex-wrap gap-2">
                   {availablePickupAreas.map(area => {
                     const isSelected = formData.preferredPickupAreas.includes(area);
@@ -387,7 +670,6 @@ export const TransporterProfilePage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Preferred Delivery Markets Chips */}
               <div className="flex flex-col gap-2 pt-1">
                 <label className="font-label-sm text-on-surface font-medium">Preferred Drop Mandis &amp; Terminals</label>
                 <div className="flex flex-wrap gap-2">
@@ -440,7 +722,6 @@ export const TransporterProfilePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex flex-col gap-2 pt-2">
               <button
                 type="button"
@@ -462,7 +743,7 @@ export const TransporterProfilePage: React.FC = () => {
           </div>
         )}
 
-        {/* ================= STEP 4: CHARGES & ACTIVATION ================= */}
+        {/* STEP 4: CHARGES & ACTIVATION */}
         {currentStep === 4 && (
           <div className="flex flex-col gap-5">
             <div className="bg-surface-container rounded-2xl p-5 shadow-sm flex flex-col gap-4">
@@ -515,7 +796,7 @@ export const TransporterProfilePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Profile Activation Card */}
+            {/* Complete and Save Action Card */}
             <div className="bg-tertiary-fixed/20 border border-tertiary/30 rounded-2xl p-5 shadow-elevated flex flex-col items-center text-center gap-3">
               <div className="w-14 h-14 bg-tertiary text-on-tertiary rounded-full flex items-center justify-center shadow-md">
                 <span className="material-symbols-outlined text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -524,65 +805,37 @@ export const TransporterProfilePage: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-headline-lg-mobile text-headline-lg-mobile font-bold text-on-surface">
-                  Your Transporter Fleet is Verified!
+                  {isEditing ? 'Save Transporter Profile Changes' : 'Complete Transporter Profile Setup'}
                 </h3>
                 <p className="text-[13px] text-on-surface-variant mt-1 max-w-sm">
-                  Your vehicle telemetry is connected to receive real-time farm pickup requests, cold-chain escrow contracts, and optimized return loads.
+                  Save your vehicle telemetry, operating corridor, and tariffs to Supabase to start receiving dispatch load matches.
                 </p>
               </div>
 
-              {/* Action Buttons */}
               <div className="w-full flex flex-col sm:flex-row gap-2.5 pt-2">
                 <button
                   type="button"
-                  onClick={async () => {
-                    await handleSaveStep(4, true);
-                    navigate('/transporter/dashboard');
-                  }}
-                  className="flex-1 h-touch-target-min bg-primary text-on-primary rounded-xl font-label-sm font-semibold hover:bg-primary-container shadow-md flex items-center justify-center gap-2"
+                  disabled={isSaving}
+                  onClick={() => handleSaveStep(undefined, true)}
+                  className="flex-1 h-touch-target-min bg-primary text-on-primary rounded-xl font-label-sm font-semibold hover:bg-primary-container shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all"
                 >
-                  <span className="material-symbols-outlined text-[18px]">local_shipping</span>
-                  View Dispatch Loads
+                  <span className="material-symbols-outlined text-[18px]">
+                    {isSaving ? 'sync' : 'save'}
+                  </span>
+                  {isSaving ? 'Saving to Supabase...' : isEditing ? 'Save Changes' : 'Save & Activate Fleet Profile'}
                 </button>
+
                 <button
                   type="button"
-                  onClick={async () => {
-                    await handleSaveStep(4, true);
-                    navigate('/transporter/route-optimization');
+                  onClick={() => {
+                    if (isEditing) setIsEditing(false);
+                    else setCurrentStep(3);
                   }}
-                  className="flex-1 h-touch-target-min bg-surface-container-lowest text-primary border border-primary/30 rounded-xl font-label-sm font-semibold hover:bg-surface-container flex items-center justify-center gap-2"
+                  className="flex-1 sm:flex-initial h-touch-target-min px-5 bg-surface-container text-on-surface-variant rounded-xl font-label-sm hover:bg-surface-container-high"
                 >
-                  <span className="material-symbols-outlined text-[18px]">alt_route</span>
-                  Route Optimization
+                  {isEditing ? 'Cancel' : 'Back to Step 3'}
                 </button>
               </div>
-            </div>
-
-            {/* Switch / Sign Out Options */}
-            <div className="flex flex-col gap-2 pt-2 border-t border-outline-variant/20">
-              <button
-                type="button"
-                onClick={() => {
-                  switchRole('farmer');
-                  navigate('/farmer/dashboard');
-                }}
-                className="w-full h-touch-target-min bg-surface-container text-on-surface rounded-xl font-label-sm font-semibold hover:bg-surface-container-high flex items-center justify-center gap-2"
-              >
-                <span className="material-symbols-outlined text-[18px]">agriculture</span>
-                Switch to Farmer View
-              </button>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  await logout();
-                  navigate('/login');
-                }}
-                className="w-full h-touch-target-min bg-error-container/20 text-error rounded-xl font-label-sm font-semibold hover:bg-error-container/30 flex items-center justify-center gap-2"
-              >
-                <span className="material-symbols-outlined text-[18px]">logout</span>
-                Sign Out
-              </button>
             </div>
           </div>
         )}

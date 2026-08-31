@@ -135,25 +135,25 @@ export const DesktopSidebar: React.FC = () => {
       </nav>
 
       {/* User Mini Profile */}
-      <div className="pt-4 mt-auto border-t border-outline-variant/20">
+      <div className="pt-4 mt-auto border-t border-outline-variant/20 relative">
         <div
           onClick={() => {
             if (currentRole === 'farmer') navigate('/farmer/profile');
             else if (currentRole === 'buyer') navigate('/buyer/profile');
             else navigate('/transporter/profile');
           }}
-          className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-container transition-colors cursor-pointer"
+          className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-container transition-colors cursor-pointer group"
         >
           <img
             alt={currentUser.name}
-            className="w-10 h-10 rounded-full object-cover border border-outline-variant/30"
+            className="w-10 h-10 rounded-full object-cover border border-outline-variant/30 group-hover:ring-2 group-hover:ring-primary/40 transition-all"
             src={currentUser.avatarUrl}
           />
           <div className="flex-1 min-w-0">
             <p className="font-label-sm text-label-sm font-semibold text-on-surface truncate">{currentUser.name}</p>
-            <p className="text-[12px] text-on-surface-variant truncate capitalize">{currentUser.role} Account</p>
+            <p className="text-[12px] text-on-surface-variant truncate capitalize">{currentRole} Account</p>
           </div>
-          <span className="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>
+          <span className="material-symbols-outlined text-on-surface-variant text-[20px] group-hover:text-primary transition-colors">chevron_right</span>
         </div>
       </div>
     </aside>
