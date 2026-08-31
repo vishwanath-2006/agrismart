@@ -50,6 +50,10 @@ export interface MarketComparisonItem {
   id: string;
   marketName: string;
   city: string;
+  state?: string;
+  commodity?: string;
+  variety?: string;
+  arrivalDate?: string;
   distanceKm: number;
   currentPricePerKg: number;
   expectedSellingPricePerKg: number;

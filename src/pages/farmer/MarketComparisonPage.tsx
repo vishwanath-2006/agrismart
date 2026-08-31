@@ -1,183 +1,305 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { TOMATO_IMG } from '../../data/mockData';
 import { MarketComparisonItem } from '../../types';
+import { fetchMarketComparisonsFromSupabase } from '../../services/mandiPriceService';
 
 export const MarketComparisonPage: React.FC = () => {
   const navigate = useNavigate();
-  const { marketComparisons, setSelectedMarket, selectedMarket } = useApp();
-  const [activeFilter, setActiveFilter] = useState<'net' | 'price' | 'distance'>('net');
+  const { selectedMarket, setSelectedMarket, selectedProduce, setSelectedProduce, produceListings } = useApp();
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortOption, setSortOption] = useState<'best_return' | 'highest_price' | 'nearest'>('best_return');
+  const [markets, setMarkets] = useState<MarketComparisonItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
-  const sortedMarkets = [...marketComparisons].sort((a, b) => {
-    if (activeFilter === 'price') return b.currentPricePerKg - a.currentPricePerKg;
-    if (activeFilter === 'distance') return a.distanceKm - b.distanceKm;
-    return b.estNetReturnPerKg - a.estNetReturnPerKg;
-  });
+  const selectedCropName = selectedProduce?.cropName || 'Tomato';
+  const payloadQuantityKg = selectedProduce?.quantityKg || 500;
+
+  // Fetch real market comparisons from public.market_prices
+  useEffect(() => {
+    let isMounted = true;
+    const loadMarkets = async () => {
+      setIsLoading(true);
+      setHasError(false);
+      try {
+        const data = await fetchMarketComparisonsFromSupabase(selectedCropName);
+        if (isMounted) {
+          setMarkets(data);
+          if (data.length > 0 && (!selectedMarket || !data.some(m => m.id === selectedMarket.id))) {
+            setSelectedMarket(data[0]);
+          }
+        }
+      } catch (err) {
+        console.warn('Error loading market comparisons:', err);
+        if (isMounted) setHasError(true);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    loadMarkets();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedCropName]);
+
+  // Real-time search filter matching commodity, variety, market, district, and state
+  const filteredMarkets = useMemo(() => {
+    if (!searchTerm.trim()) return markets;
+    const term = searchTerm.toLowerCase().trim();
+
+    return markets.filter(m => {
+      const matchMarket = m.marketName?.toLowerCase().includes(term);
+      const matchCity = m.city?.toLowerCase().includes(term);
+      const matchState = m.state?.toLowerCase().includes(term);
+      const matchCommodity = m.commodity?.toLowerCase().includes(term);
+      const matchVariety = m.variety?.toLowerCase().includes(term);
+      return matchMarket || matchCity || matchState || matchCommodity || matchVariety;
+    });
+  }, [markets, searchTerm]);
+
+  // Sort markets according to selected strategy
+  const sortedMarkets = useMemo(() => {
+    const list = [...filteredMarkets];
+    if (sortOption === 'highest_price') {
+      return list.sort((a, b) => b.currentPricePerKg - a.currentPricePerKg);
+    }
+    if (sortOption === 'nearest') {
+      return list.sort((a, b) => a.distanceKm - b.distanceKm);
+    }
+    // Default: Best Return
+    return list.sort((a, b) => b.estNetReturnPerKg - a.estNetReturnPerKg);
+  }, [filteredMarkets, sortOption]);
+
+  const bestMarketId = useMemo(() => {
+    if (markets.length === 0) return null;
+    const top = [...markets].sort((a, b) => b.estNetReturnPerKg - a.estNetReturnPerKg)[0];
+    return top?.id || null;
+  }, [markets]);
 
   const handleSelectMarket = (mkt: MarketComparisonItem) => {
     setSelectedMarket(mkt);
-    navigate('/farmer/market-prices');
+    navigate('/farmer/price-history');
   };
 
   return (
     <AppLayout title="Market Comparison" showBack onBack={() => navigate('/farmer/dashboard')}>
-      <div className="flex flex-col w-full gap-4">
-        {/* AI Recommendation Hero Card */}
-        <div className="relative overflow-hidden rounded-2xl bg-primary-container text-on-primary-container shadow-elevated p-5 mt-2">
-          <div className="absolute -right-4 -top-4 opacity-10 pointer-events-none">
-            <span className="material-symbols-outlined text-[120px]">psychology</span>
-          </div>
-          <div className="relative z-10 flex flex-col gap-2.5">
-            <div className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-tertiary-fixed text-[18px]">auto_awesome</span>
-              <h2 className="text-[12px] font-bold uppercase tracking-wider text-tertiary-fixed">
-                AI Recommendation
-              </h2>
-            </div>
-            <div>
-              <h3 className="text-headline-lg-mobile font-headline-lg-mobile font-bold text-on-primary">
-                Best Market: KR Market (Bangalore)
-              </h3>
-              <p className="text-body-md font-body-md mt-1 opacity-90 leading-snug">
-                Higher net revenue expected (+₹2.8/kg) even after accounting for transport costs (145km distance).
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                setSelectedMarket(marketComparisons[0]);
-                navigate('/farmer/price-history');
-              }}
-              className="mt-2 w-full h-touch-target-min bg-primary text-on-primary rounded-xl flex items-center justify-center gap-2 font-label-sm font-semibold shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98]"
-            >
-              <span>View Route & Price Forecast</span>
-              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-            </button>
-          </div>
+      <div className="flex flex-col w-full gap-4 pb-8">
+        
+        {/* Header */}
+        <div className="pt-1">
+          <h2 className="text-title-md font-title-md font-bold text-on-surface">Market Comparison</h2>
+          <p className="text-[13px] text-on-surface-variant">Find the best market for your crop</p>
         </div>
 
-        {/* Selected Crop Context Bar */}
-        <div className="flex items-center gap-3.5 py-1 px-1 bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 shadow-card">
-          <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 shadow-sm border border-outline-variant/20">
+        {/* Search Bar */}
+        <div className="relative flex items-center bg-surface-container-low rounded-2xl h-touch-target-min px-4 gap-3 border border-outline-variant/30 focus-within:border-primary focus-within:bg-surface-container-lowest focus-within:shadow-sm transition-all">
+          <span className="material-symbols-outlined text-on-surface-variant text-[20px]">search</span>
+          <input
+            type="text"
+            placeholder="Search crop or market..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="flex-1 bg-transparent outline-none font-body-md text-on-surface placeholder:text-outline-variant"
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm('')} className="text-on-surface-variant hover:text-on-surface">
+              <span className="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          )}
+        </div>
+
+        {/* Selected Crop & Quantity Bar */}
+        <div className="flex items-center gap-3.5 bg-surface-container-lowest p-3.5 rounded-2xl border border-outline-variant/30 shadow-card">
+          <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 shadow-sm border border-outline-variant/20">
             <img
               className="w-full h-full object-cover"
-              alt="Tomato Hybrid"
-              src={TOMATO_IMG}
+              alt={selectedCropName}
+              src={selectedProduce?.imageUrl || TOMATO_IMG}
             />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-title-md font-title-md font-bold text-on-surface truncate">
-              Tomato (Hybrid)
-            </h1>
-            <p className="text-label-sm font-label-sm text-on-surface-variant flex items-center gap-1 mt-0.5">
-              <span className="material-symbols-outlined text-[16px] text-primary">location_on</span>
-              <span>Origin: Your Farm, Mysore</span>
+            <div className="flex items-center gap-2">
+              <h3 className="text-title-md font-title-md font-bold text-on-surface truncate">
+                {selectedCropName}
+              </h3>
+              <span className="text-[11px] font-bold text-primary bg-primary-fixed/30 px-2.5 py-0.5 rounded-full shrink-0">
+                {payloadQuantityKg} kg
+              </span>
+            </div>
+            <p className="text-label-sm text-on-surface-variant flex items-center gap-1 mt-0.5">
+              <span className="material-symbols-outlined text-[15px] text-primary">location_on</span>
+              <span>Farm Origin: Mysore, Karnataka</span>
             </p>
           </div>
           <button
-            onClick={() => navigate('/farmer/add-produce')}
-            className="text-[12px] font-semibold text-primary bg-primary-fixed/30 px-3 py-1.5 rounded-full hover:bg-primary-fixed/50 transition-colors"
+            onClick={() => navigate('/farmer/market-prices')}
+            className="text-[12px] font-semibold text-primary bg-primary-fixed/30 hover:bg-primary-fixed/50 px-3 py-1.5 rounded-full transition-colors shrink-0"
           >
             Change Crop
           </button>
         </div>
 
-        {/* Sorting/Filter Tabs */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+        {/* Sorting Controls */}
+        <div className="flex bg-surface-container-low p-1 rounded-2xl border border-outline-variant/30">
           <button
-            onClick={() => setActiveFilter('net')}
-            className={`shrink-0 h-[40px] px-4 rounded-full text-label-sm font-semibold flex items-center gap-1.5 transition-all ${
-              activeFilter === 'net'
+            onClick={() => setSortOption('best_return')}
+            className={`flex-1 py-2 rounded-xl text-label-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
+              sortOption === 'best_return'
                 ? 'bg-primary text-on-primary shadow-sm'
-                : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container'
+                : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">account_balance_wallet</span>
-            Best Net Return
+            <span className="material-symbols-outlined text-[16px]">account_balance_wallet</span>
+            <span>Best return</span>
           </button>
+
           <button
-            onClick={() => setActiveFilter('price')}
-            className={`shrink-0 h-[40px] px-4 rounded-full text-label-sm font-semibold flex items-center gap-1.5 transition-all ${
-              activeFilter === 'price'
+            onClick={() => setSortOption('highest_price')}
+            className={`flex-1 py-2 rounded-xl text-label-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
+              sortOption === 'highest_price'
                 ? 'bg-primary text-on-primary shadow-sm'
-                : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container'
+                : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">currency_rupee</span>
-            Highest Price
+            <span className="material-symbols-outlined text-[16px]">currency_rupee</span>
+            <span>Highest price</span>
           </button>
+
           <button
-            onClick={() => setActiveFilter('distance')}
-            className={`shrink-0 h-[40px] px-4 rounded-full text-label-sm font-semibold flex items-center gap-1.5 transition-all ${
-              activeFilter === 'distance'
+            onClick={() => setSortOption('nearest')}
+            className={`flex-1 py-2 rounded-xl text-label-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
+              sortOption === 'nearest'
                 ? 'bg-primary text-on-primary shadow-sm'
-                : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container'
+                : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">near_me</span>
-            Nearest Distance
+            <span className="material-symbols-outlined text-[16px]">near_me</span>
+            <span>Nearest</span>
           </button>
         </div>
 
-        {/* Comparison Market Cards List */}
-        <div className="space-y-3.5 mt-1">
-          {sortedMarkets.map(mkt => {
-            const isSelected = selectedMarket?.id === mkt.id;
-            return (
-              <div
-                key={mkt.id}
-                className={`bg-surface-container-lowest rounded-2xl p-4 border transition-all shadow-card relative ${
-                  mkt.isAiRecommended
-                    ? 'border-primary/40 ring-1 ring-primary/20'
-                    : 'border-outline-variant/30'
-                }`}
-              >
-                {mkt.isAiRecommended && (
-                  <div className="absolute top-3 right-3 bg-tertiary text-on-tertiary px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[13px]">verified</span>
-                    Top Pick
-                  </div>
-                )}
+        {/* Loading State */}
+        {isLoading && (
+          <div className="bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/30 text-center flex flex-col items-center justify-center gap-2">
+            <span className="material-symbols-outlined text-[32px] text-primary animate-spin">progress_activity</span>
+            <p className="font-label-sm font-semibold text-on-surface">Loading real APMC market rates...</p>
+          </div>
+        )}
 
-                <div className="pr-16">
-                  <h4 className="font-title-md text-title-md font-bold text-on-surface">{mkt.marketName}</h4>
-                  <p className="text-[13px] text-on-surface-variant flex items-center gap-1 mt-0.5">
-                    <span className="material-symbols-outlined text-[15px]">route</span>
-                    {mkt.distanceKm} km away • ~{mkt.transitTimeHrs}h transit
-                  </p>
-                </div>
+        {/* Error State */}
+        {!isLoading && hasError && (
+          <div className="bg-surface-container-lowest p-6 rounded-2xl border border-error/30 text-center text-on-surface-variant">
+            <span className="material-symbols-outlined text-[32px] text-error mb-2">error</span>
+            <p className="font-label-sm font-bold text-on-surface">Unable to load market prices.</p>
+            <p className="text-[12px] mt-1">Please check your network connection or try refreshing.</p>
+          </div>
+        )}
 
-                {/* Financial Breakdown Grid */}
-                <div className="grid grid-cols-3 gap-2 my-3 p-3 bg-surface-container-low rounded-xl text-center">
-                  <div>
-                    <span className="text-[11px] text-on-surface-variant font-medium block">Mandi Price</span>
-                    <span className="text-body-md font-bold text-on-surface">₹{mkt.currentPricePerKg}/kg</span>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-on-surface-variant font-medium block">Transport Est.</span>
-                    <span className="text-body-md font-bold text-secondary">₹{mkt.transportCostPerKg}/kg</span>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-on-surface-variant font-medium block">Est. Net Profit</span>
-                    <span className="text-body-md font-bold text-primary">₹{mkt.estNetReturnPerKg}/kg</span>
-                  </div>
-                </div>
+        {/* Empty State */}
+        {!isLoading && !hasError && sortedMarkets.length === 0 && (
+          <div className="bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/30 text-center text-on-surface-variant">
+            <span className="material-symbols-outlined text-[36px] text-on-surface-variant/60 mb-2">search_off</span>
+            <h3 className="font-label-sm font-bold text-on-surface">No matching markets found.</h3>
+            <p className="text-[12px] text-on-surface-variant mt-1">Try another crop or market.</p>
+          </div>
+        )}
 
-                {/* Card Action */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleSelectMarket(mkt)}
-                    className="flex-1 h-touch-target-min bg-primary text-on-primary rounded-xl font-label-sm font-semibold shadow-sm hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                  >
-                    <span>Choose Market & View Mandi Rates</span>
-                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                  </button>
+        {/* Market Results List */}
+        {!isLoading && !hasError && sortedMarkets.length > 0 && (
+          <div className="space-y-3.5">
+            {sortedMarkets.map(mkt => {
+              const isBestReturn = mkt.id === bestMarketId;
+
+              return (
+                <div
+                  key={mkt.id}
+                  className={`bg-surface-container-lowest rounded-2xl p-4 border transition-all shadow-card relative ${
+                    isBestReturn
+                      ? 'border-primary ring-1 ring-primary/30'
+                      : 'border-outline-variant/30 hover:border-primary/40'
+                  }`}
+                >
+                  {/* Top Badge for Best Return */}
+                  {isBestReturn && (
+                    <div className="absolute top-3.5 right-3.5 bg-[#0f5238] text-white px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 shadow-sm">
+                      <span className="material-symbols-outlined text-[13px]">verified</span>
+                      BEST RETURN
+                    </div>
+                  )}
+
+                  {/* Market Name & Location */}
+                  <div className="pr-24">
+                    <h3 className="font-title-md text-title-md font-bold text-on-surface leading-snug">
+                      {mkt.marketName}
+                    </h3>
+                    <p className="text-[13px] text-on-surface-variant flex items-center gap-1 mt-0.5">
+                      <span className="material-symbols-outlined text-[15px] text-primary">location_on</span>
+                      <span>{mkt.city}, {mkt.state || 'Karnataka'}</span>
+                    </p>
+                  </div>
+
+                  {/* Primary Financial Metric: Estimated Return */}
+                  <div className="my-3 p-3.5 bg-primary-fixed/20 rounded-xl border border-primary/20 flex items-center justify-between">
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-primary block">
+                        Estimated return
+                      </span>
+                      <span className="text-[11px] text-on-surface-variant font-medium">Calculated net earning</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-headline-lg-mobile font-headline-lg-mobile font-bold text-primary">
+                        ₹{mkt.estNetReturnPerKg.toFixed(2)}
+                      </span>
+                      <span className="text-label-sm font-normal text-on-surface-variant">/kg</span>
+                    </div>
+                  </div>
+
+                  {/* Financial Breakdown Grid */}
+                  <div className="grid grid-cols-3 gap-2 p-3 bg-surface-container-low rounded-xl text-center text-[12px]">
+                    <div>
+                      <span className="text-[11px] text-on-surface-variant font-medium block">Mandi price</span>
+                      <span className="font-bold text-on-surface">₹{mkt.currentPricePerKg.toFixed(2)}/kg</span>
+                      <span className="text-[10px] text-on-surface-variant block mt-0.5">Govt reported</span>
+                    </div>
+
+                    <div>
+                      <span className="text-[11px] text-on-surface-variant font-medium block">Transport</span>
+                      <span className="font-bold text-secondary">₹{mkt.transportCostPerKg.toFixed(2)}/kg</span>
+                      <span className="text-[10px] text-on-surface-variant block mt-0.5">Calculated</span>
+                    </div>
+
+                    <div>
+                      <span className="text-[11px] text-on-surface-variant font-medium block">Distance</span>
+                      <span className="font-bold text-on-surface">{mkt.distanceKm} km</span>
+                      <span className="text-[10px] text-on-surface-variant block mt-0.5">~{mkt.transitTimeHrs}h</span>
+                    </div>
+                  </div>
+
+                  {/* Action Link */}
+                  <div className="mt-3 pt-2.5 border-t border-outline-variant/20 flex items-center justify-between">
+                    <span className="text-[11px] text-on-surface-variant font-medium flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#0f5238]" />
+                      Source: data.gov.in
+                    </span>
+
+                    <button
+                      onClick={() => handleSelectMarket(mkt)}
+                      className="text-label-sm font-bold text-primary hover:underline flex items-center gap-1"
+                    >
+                      <span>View Details</span>
+                      <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </AppLayout>
   );

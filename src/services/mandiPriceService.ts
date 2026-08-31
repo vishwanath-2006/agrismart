@@ -77,14 +77,19 @@ export async function fetchMarketComparisonsFromSupabase(
   cropName: string = 'Tomato'
 ): Promise<MarketComparisonItem[]> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('market_prices')
-      .select('*')
-      .ilike('commodity', `%${cropName.split(' ')[0]}%`)
-      .order('modal_price_per_kg', { ascending: false });
+      .select('*');
+
+    if (cropName) {
+      const keyword = cropName.split(' ')[0].trim();
+      query = query.ilike('commodity', `%${keyword}%`);
+    }
+
+    const { data, error } = await query.order('modal_price_per_kg', { ascending: false });
 
     if (error || !data || data.length === 0) {
-      return MOCK_MARKET_COMPARISONS;
+      return [];
     }
 
     // Default benchmark logistics config for known APMC corridors
@@ -95,12 +100,12 @@ export async function fetchMarketComparisonsFromSupabase(
       'Kolar APMC Mandi': { city: 'Kolar District', distanceKm: 210, transitHrs: 4.5, transportRatePerKm: 10 }
     };
 
-    return data.map((row: MarketPriceDbRow, index: number) => {
+    const items: MarketComparisonItem[] = data.map((row: MarketPriceDbRow, index: number) => {
       const modalP = Number(row.modal_price_per_kg) || 28;
       const logistics = marketLogistics[row.market] || {
-        city: row.district || 'Karnataka',
-        distanceKm: 80 + index * 40,
-        transitHrs: 1.5 + index * 0.8,
+        city: row.district || 'APMC Center',
+        distanceKm: 40 + (index % 6) * 35,
+        transitHrs: 1.0 + (index % 6) * 0.7,
         transportRatePerKm: 10
       };
 
@@ -113,6 +118,10 @@ export async function fetchMarketComparisonsFromSupabase(
         id: row.id || `mkt_${index + 1}`,
         marketName: row.market,
         city: logistics.city,
+        state: row.state,
+        commodity: row.commodity,
+        variety: row.variety,
+        arrivalDate: row.arrival_date,
         distanceKm: logistics.distanceKm,
         currentPricePerKg: modalP,
         expectedSellingPricePerKg: modalP,
@@ -120,13 +129,21 @@ export async function fetchMarketComparisonsFromSupabase(
         transportCostPerKg,
         estNetReturnPerKg,
         demandLevel: modalP >= 30 ? 'High' : 'Moderate',
-        isAiRecommended: index === 0, // Top net-return market
+        isAiRecommended: false, // will be set after sorting
         transitTimeHrs: logistics.transitHrs
       };
     });
+
+    // Mark the top net-return option
+    const sortedByReturn = [...items].sort((a, b) => b.estNetReturnPerKg - a.estNetReturnPerKg);
+    if (sortedByReturn.length > 0) {
+      sortedByReturn[0].isAiRecommended = true;
+    }
+
+    return sortedByReturn;
   } catch (err: any) {
     console.warn('Exception in fetchMarketComparisonsFromSupabase:', err);
-    return MOCK_MARKET_COMPARISONS;
+    return [];
   }
 }
 
