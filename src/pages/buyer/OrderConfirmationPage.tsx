@@ -180,23 +180,23 @@ export const OrderConfirmationPage: React.FC = () => {
           <span className="material-symbols-outlined text-tertiary-fixed text-[24px] shrink-0 mt-0.5">verified_user</span>
           <div>
             <h4 className="font-label-sm text-label-sm font-bold uppercase tracking-wider text-tertiary-fixed">
-              AgriEscrow Protection
+              AgriEscrow Protection (Simulated Escrow • Prototype Flow)
             </h4>
             <p className="text-[13px] leading-snug opacity-90 mt-0.5">
-              Your payment is protected by AgriEscrow and released according to the delivery and quality inspection workflow.
+              Demonstration workflow: Payment authorization is held in simulated escrow and released upon delivery inspection signoff.
             </p>
           </div>
         </div>
 
         {/* 3. Payment Method Selector */}
         <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card flex flex-col gap-3">
-          <h3 className="font-title-md text-title-md font-bold text-on-surface">Payment Method</h3>
+          <h3 className="font-title-md text-title-md font-bold text-on-surface">Payment Method (Prototype Selector)</h3>
 
           <div className="space-y-2">
             {[
-              { id: 'upi', label: 'UPI (GPay / PhonePe / Paytm)', icon: 'account_balance_wallet', desc: 'Instant escrow authorization' },
-              { id: 'escrow', label: 'AgriSmart Direct Bank Escrow', icon: 'account_balance', desc: 'Secure wholesale trade settlement' },
-              { id: 'netbanking', label: 'Net Banking / RTGS', icon: 'payments', desc: 'For invoice amounts above ₹50,000' }
+              { id: 'upi', label: 'UPI (GPay / PhonePe / Paytm)', icon: 'account_balance_wallet', desc: 'Instant escrow authorization simulation' },
+              { id: 'escrow', label: 'AgriSmart Direct Bank Escrow', icon: 'account_balance', desc: 'Secure wholesale trade settlement simulation' },
+              { id: 'netbanking', label: 'Net Banking / RTGS', icon: 'payments', desc: 'For invoice amounts above ₹50,000 simulation' }
             ].map(method => (
               <label
                 key={method.id}
@@ -238,7 +238,7 @@ export const OrderConfirmationPage: React.FC = () => {
               </>
             ) : (
               <>
-                <span>Fund Escrow &amp; Place Order (₹{totalAmount.toLocaleString()})</span>
+                <span>Authorize Simulated Escrow (₹{totalAmount.toLocaleString()})</span>
                 <span className="material-symbols-outlined text-[20px]">lock</span>
               </>
             )}

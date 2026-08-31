@@ -121,10 +121,10 @@ export const DeliveryConfirmationPage: React.FC = () => {
 
             <div>
               <h2 className="text-headline-lg-mobile font-headline-lg-mobile font-bold text-on-surface">
-                Delivery Completed &amp; Escrow Released!
+                Delivery Completed (Simulated Settlement)
               </h2>
               <p className="text-body-md text-on-surface-variant mt-1">
-                Order #{order.orderNumber} has been verified and settled.
+                Order #{order.orderNumber} demo verification sign-off recorded.
               </p>
             </div>
 
@@ -145,7 +145,7 @@ export const DeliveryConfirmationPage: React.FC = () => {
                 </span>
               </div>
               <div className="text-[11px] text-on-surface-variant/80 pt-1 text-right">
-                Status: Demo escrow settlement recorded
+                Status: Prototype escrow settlement recorded (Simulated)
               </div>
             </div>
 
@@ -204,7 +204,7 @@ export const DeliveryConfirmationPage: React.FC = () => {
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-label-sm font-bold text-on-surface">1. Delivery Verification OTP</label>
-                  <span className="text-[11px] text-on-surface-variant font-medium">Demo code: 8492</span>
+                  <span className="text-[11px] text-on-surface-variant font-medium">Demo OTP code: 8492</span>
                 </div>
                 <div className="flex items-center bg-surface-container-low rounded-xl h-touch-target-min px-4 gap-3 border border-outline-variant/30 focus-within:border-primary focus-within:bg-surface-container-lowest transition-all">
                   <span className="material-symbols-outlined text-primary text-[20px]">pin</span>
@@ -279,7 +279,7 @@ export const DeliveryConfirmationPage: React.FC = () => {
             {/* 3. Escrow Settlement Summary Card */}
             <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card flex flex-col gap-2.5">
               <div className="flex items-center justify-between">
-                <h3 className="font-title-md text-title-md font-bold text-on-surface">Escrow Settlement</h3>
+                <h3 className="font-title-md text-title-md font-bold text-on-surface">Escrow Settlement (Simulated)</h3>
                 <span className="text-[11px] text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">Demo settlement</span>
               </div>
               
@@ -298,7 +298,7 @@ export const DeliveryConfirmationPage: React.FC = () => {
                 </div>
               </div>
               <p className="text-[11px] text-on-surface-variant leading-tight mt-1">
-                After delivery confirmation, the existing escrow workflow will process payment according to the configured order and verification rules.
+                Demo workflow: Simulated escrow settlement will record completion status without live banking gateway transactions.
               </p>
             </div>
 
@@ -316,7 +316,7 @@ export const DeliveryConfirmationPage: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <span>Confirm Delivery &amp; Release Payment</span>
+                    <span>Confirm Delivery (Simulated Escrow Release)</span>
                     <span className="material-symbols-outlined text-[22px]">verified</span>
                   </>
                 )}

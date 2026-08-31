@@ -73,7 +73,7 @@ export const TransporterMatchingPage: React.FC = () => {
             <span className="text-[11px] font-bold uppercase tracking-wider text-primary bg-primary-fixed/30 px-2.5 py-0.5 rounded-full">
               Order &amp; Route Summary
             </span>
-            <span className="text-[13px] font-bold text-on-surface">{routeDistanceKm} km • ~3.5 hrs</span>
+            <span className="text-[13px] font-bold text-on-surface">{routeDistanceKm} km (Benchmark road est.) • ~3.5 hrs</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
@@ -111,7 +111,7 @@ export const TransporterMatchingPage: React.FC = () => {
               <span className="material-symbols-outlined text-[15px]">auto_awesome</span>
               Recommended for this order
             </span>
-            <span className="text-[10px] opacity-80">AI demo recommendation</span>
+            <span className="text-[10px] opacity-80">AI estimate • Not Government data</span>
           </div>
           <p className="text-body-md leading-snug">
             Best match based on route ({routeDistanceKm} km), vehicle capacity (Reefer truck) and estimated cost.
@@ -165,7 +165,7 @@ export const TransporterMatchingPage: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <h4 className="font-title-md text-title-md font-bold text-on-surface">{trans.name}</h4>
                         <span className="text-[10px] font-bold text-primary bg-primary-fixed/40 px-2 py-0.5 rounded-full">
-                          Available
+                          Demo Profile
                         </span>
                       </div>
                       <p className="text-[13px] text-on-surface-variant font-medium">{trans.vehicleType}</p>
@@ -174,9 +174,9 @@ export const TransporterMatchingPage: React.FC = () => {
                       <div className="flex items-center gap-2 mt-1 text-[11px] text-on-surface-variant">
                         <span className="font-bold text-on-surface flex items-center gap-0.5">
                           <span className="material-symbols-outlined text-secondary text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                          {trans.rating}
+                          {trans.rating} (Demo)
                         </span>
-                        <span>• {trans.tripsCount} trips</span>
+                        <span>• {trans.tripsCount} trips (Demo)</span>
                         {trans.isRefrigerated && (
                           <span className="font-semibold text-tertiary bg-tertiary-fixed/30 px-1.5 py-0.5 rounded">
                             Cold Chain

@@ -274,9 +274,9 @@ export const MarketComparisonPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <span className="text-[11px] text-on-surface-variant font-medium block">Distance</span>
+                      <span className="text-[11px] text-on-surface-variant font-medium block">Road Distance</span>
                       <span className="font-bold text-on-surface">{mkt.distanceKm} km</span>
-                      <span className="text-[10px] text-on-surface-variant block mt-0.5">~{mkt.transitTimeHrs}h</span>
+                      <span className="text-[10px] text-on-surface-variant block mt-0.5">Benchmark est.</span>
                     </div>
                   </div>
 
@@ -284,7 +284,7 @@ export const MarketComparisonPage: React.FC = () => {
                   <div className="mt-3 pt-2.5 border-t border-outline-variant/20 flex items-center justify-between">
                     <span className="text-[11px] text-on-surface-variant font-medium flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#0f5238]" />
-                      Source: data.gov.in
+                      Government reported • data.gov.in
                     </span>
 
                     <button

@@ -137,9 +137,9 @@ export const PriceHistoryPage: React.FC = () => {
 
         {/* AI Forecast Intelligence Banner */}
         <AIInsightBanner
-          title="AI Forecast: Price Peak Ahead"
-          description="Prices for Hybrid Tomatoes are forecasted to peak at ₹34.20/kg within 3-4 days due to supply shortfalls from southern mandis."
-          badgeLabel="Expected Peak Rate"
+          title="AI Forecast (AI estimate • Not Government data)"
+          description="Prices for Hybrid Tomatoes are estimated to reach ₹34.20/kg within 3-4 days based on prototype statistical market modeling."
+          badgeLabel="Estimated Rate"
           badgeValue="₹34.20/kg"
           variant="tertiary"
           icon="auto_awesome"
@@ -147,7 +147,10 @@ export const PriceHistoryPage: React.FC = () => {
 
         {/* Market Driver Cards */}
         <div className="flex flex-col gap-2.5">
-          <h3 className="font-title-md text-title-md font-bold text-on-surface">Key Price Drivers</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-title-md text-title-md font-bold text-on-surface">Key Price Drivers</h3>
+            <span className="text-[11px] text-on-surface-variant font-medium">Prototype market factors</span>
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
             <div className="bg-surface-container-lowest p-3.5 rounded-2xl border border-outline-variant/30 shadow-card flex items-center gap-3">

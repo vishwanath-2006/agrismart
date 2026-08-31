@@ -162,7 +162,7 @@ export const FarmerDashboardPage: React.FC = () => {
 
         {/* AI Insight (Clearly labeled as estimate/forecast) */}
         <AIInsightBanner
-          title="AI Market Insight (Estimated forecast)"
+          title="AI Market Insight (AI estimate • Not Government data)"
           description="Hybrid Tomato demand across southern APMC mandis is projected to remain steady. Best selling opportunity identified at KR Market."
           badgeLabel="Estimated Rate"
           badgeValue="₹28–31/kg"

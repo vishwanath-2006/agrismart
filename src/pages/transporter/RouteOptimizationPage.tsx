@@ -103,7 +103,7 @@ export const RouteOptimizationPage: React.FC = () => {
               <span className="material-symbols-outlined text-[15px]">auto_awesome</span>
               Recommended Route
             </span>
-            <span className="text-[10px] opacity-80">AI demo recommendation</span>
+            <span className="text-[10px] opacity-80">AI estimate • Not Government data</span>
           </div>
           <p className="text-body-md leading-snug">
             Corridor via <span className="font-bold">NH-275 / Mandya Bypass</span> offers smooth multi-lane transit and estimated savings of ~1.8L fuel.
@@ -115,14 +115,17 @@ export const RouteOptimizationPage: React.FC = () => {
           <div className="bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 text-center">
             <span className="text-[11px] text-on-surface-variant font-medium block">Total Distance</span>
             <span className="text-title-md font-bold text-on-surface">{distanceKm} km</span>
+            <span className="text-[10px] text-on-surface-variant block mt-0.5">Benchmark est.</span>
           </div>
           <div className="bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 text-center">
             <span className="text-[11px] text-on-surface-variant font-medium block">Est. Duration</span>
             <span className="text-title-md font-bold text-primary">~{durationStr}</span>
+            <span className="text-[10px] text-on-surface-variant block mt-0.5">Estimated</span>
           </div>
           <div className="bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 text-center">
-            <span className="text-[11px] text-on-surface-variant font-medium block">Demo Savings</span>
+            <span className="text-[11px] text-on-surface-variant font-medium block">Fuel Savings</span>
             <span className="text-title-md font-bold text-tertiary">~1.8L</span>
+            <span className="text-[10px] text-on-surface-variant block mt-0.5">Prototype est.</span>
           </div>
         </div>
 

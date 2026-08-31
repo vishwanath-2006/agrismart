@@ -180,12 +180,11 @@ export const PriceNegotiationPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-tertiary-fixed flex items-center gap-1">
               <span className="material-symbols-outlined text-[15px]">auto_awesome</span>
-              AI Price Guidance
+              AI Price Guidance (AI estimate • Not Government data)
             </span>
-            <span className="text-[10px] opacity-80">Estimated — not an official Govt price</span>
           </div>
           <p className="text-body-md leading-snug">
-            AI demo estimate: <span className="font-bold">₹{deal.aiFairPriceMin} – ₹{deal.aiFairPriceMax}/kg</span> for bulk procurement of this harvest grade.
+            Prototype estimated range: <span className="font-bold">₹{deal.aiFairPriceMin} – ₹{deal.aiFairPriceMax}/kg</span> for bulk procurement of this harvest grade.
           </p>
         </div>
 

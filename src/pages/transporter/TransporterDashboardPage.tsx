@@ -99,7 +99,7 @@ export const TransporterDashboardPage: React.FC = () => {
           <KPIStatCard
             label="Today's Earnings"
             value="₹3,400"
-            trendText="Demo earnings"
+            trendText="Demo statistic"
             icon="account_balance_wallet"
             colorScheme="primary"
           />
