@@ -196,3 +196,94 @@ export interface OrderItem {
     deliveredAt?: string;
   };
 }
+
+export interface FarmerProfileData {
+  id?: string;
+  userId?: string;
+  fullName: string;
+  phone: string;
+  farmLocation: string;
+  village: string;
+  district: string;
+  state: string;
+  pincode: string;
+  latitude?: number;
+  longitude?: number;
+  farmSize: number;
+  farmSizeUnit: string;
+  mainCrops: string[];
+  otherCrops?: string;
+  farmingExperience: string;
+  farmingType: string;
+  preferredMarkets: string[];
+  primaryMarket: string;
+  secondaryMarket: string;
+  preferredSellingDistance: string;
+  typicalProduceQuantity: string;
+  sellingFrequency: string;
+  preferredBuyerType: string;
+  expectedPricePreference?: number;
+  minimumPricePreference?: number;
+  profileCompleted: boolean;
+  completionPercentage: number;
+}
+
+export interface BuyerProfileData {
+  id?: string;
+  userId?: string;
+  fullName: string;
+  phone: string;
+  email: string;
+  businessName: string;
+  businessType: string;
+  businessLocation: string;
+  city: string;
+  district: string;
+  state: string;
+  pincode: string;
+  latitude?: number;
+  longitude?: number;
+  receivingAddress: string;
+  primaryReceivingMarket: string;
+  secondaryReceivingMarket: string;
+  preferredDeliveryWindow: string;
+  preferredVegetables: string[];
+  preferredQuantity: string;
+  minimumOrderQuantity: string;
+  typicalPurchaseQuantity: string;
+  buyingFrequency: string;
+  preferredQuality: string;
+  preferredPriceRange: string;
+  preferredMarkets: string[];
+  preferredDeliveryDistance: string;
+  profileCompleted: boolean;
+  completionPercentage: number;
+}
+
+export interface TransporterProfileData {
+  id?: string;
+  userId?: string;
+  fullName: string;
+  phone: string;
+  email: string;
+  currentLocation: string;
+  latitude?: number;
+  longitude?: number;
+  vehicleType: string;
+  vehicleRegistrationNumber: string;
+  vehicleCapacity: string;
+  vehicleModel: string;
+  vehicleAge: string;
+  operatingLocation: string;
+  preferredPickupAreas: string[];
+  preferredDeliveryMarkets: string[];
+  availability: string;
+  workingDays: string;
+  preferredPickupTime: string;
+  transportChargePerKm: number;
+  minimumTripCharge: number;
+  additionalLoadingCharge: number;
+  profileCompleted: boolean;
+  completionPercentage: number;
+}
+

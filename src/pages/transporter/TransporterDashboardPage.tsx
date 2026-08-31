@@ -8,7 +8,7 @@ import { OrderItem } from '../../types';
 
 export const TransporterDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { orders, activeOrder, acceptTransportJob, setActiveOrder } = useApp();
+  const { orders, activeOrder, acceptTransportJob, setActiveOrder, transporterProfile } = useApp();
   const [isOnDuty, setIsOnDuty] = useState(true);
 
   // Active in-transit or pending delivery trip
@@ -45,6 +45,29 @@ export const TransporterDashboardPage: React.FC = () => {
       }
     >
       <div className="flex flex-col w-full gap-5 pb-6">
+        {/* Gentle Transporter Profile Completion Banner if not 100% */}
+        {transporterProfile && transporterProfile.completionPercentage < 100 && (
+          <div
+            onClick={() => navigate('/transporter/profile')}
+            className="p-3.5 bg-tertiary-fixed/20 border border-tertiary/30 rounded-2xl flex items-center justify-between gap-3 cursor-pointer hover:bg-tertiary-fixed/30 transition-all shadow-sm mt-1"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[20px]">local_shipping</span>
+              </div>
+              <div>
+                <p className="font-label-sm text-label-sm font-bold text-on-surface">
+                  Fleet Profile is {transporterProfile.completionPercentage}% Complete
+                </p>
+                <p className="text-[12px] text-on-surface-variant">
+                  Verify vehicle capacity &amp; service corridor to receive automated dispatch jobs.
+                </p>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-tertiary text-[20px]">arrow_forward</span>
+          </div>
+        )}
+
         {/* KPI Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-1">
           <KPIStatCard

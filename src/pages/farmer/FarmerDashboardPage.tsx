@@ -9,7 +9,7 @@ import { FARMER_AVATAR } from '../../data/mockData';
 
 export const FarmerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { produceListings, priceHistory, setSelectedProduce } = useApp();
+  const { produceListings, priceHistory, setSelectedProduce, farmerProfile } = useApp();
 
   return (
     <AppLayout title="Farmer Dashboard">
@@ -18,7 +18,7 @@ export const FarmerDashboardPage: React.FC = () => {
         <div className="mt-2 flex items-center justify-between">
           <div>
             <h1 className="text-headline-lg-mobile md:text-headline-lg font-headline-lg-mobile text-on-surface font-bold">
-              Good morning, Farmer
+              Good morning, {farmerProfile?.fullName?.split(' ')[0] || 'Farmer'}
             </h1>
             <p className="text-body-md font-body-md text-on-surface-variant mt-0.5">
               Here is your daily market snapshot.
@@ -35,6 +35,29 @@ export const FarmerDashboardPage: React.FC = () => {
             />
           </div>
         </div>
+
+        {/* Gentle Profile Completion Banner if not 100% */}
+        {farmerProfile && farmerProfile.completionPercentage < 100 && (
+          <div
+            onClick={() => navigate('/farmer/profile')}
+            className="p-3.5 bg-primary-fixed/20 border border-primary/30 rounded-2xl flex items-center justify-between gap-3 cursor-pointer hover:bg-primary-fixed/30 transition-all shadow-sm"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[20px]">agriculture</span>
+              </div>
+              <div>
+                <p className="font-label-sm text-label-sm font-bold text-on-surface">
+                  Farmer Profile is {farmerProfile.completionPercentage}% Complete
+                </p>
+                <p className="text-[12px] text-on-surface-variant">
+                  Set farm location and crop preferences to unlock direct buyer dispatch.
+                </p>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-primary text-[20px]">arrow_forward</span>
+          </div>
+        )}
 
         {/* 4-Stat Summary Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

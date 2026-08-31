@@ -8,7 +8,7 @@ import { ProduceListing } from '../../types';
 
 export const BuyerMarketplacePage: React.FC = () => {
   const navigate = useNavigate();
-  const { produceListings, setSelectedProduce, startNegotiationForProduce } = useApp();
+  const { produceListings, setSelectedProduce, startNegotiationForProduce, buyerProfile } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [inspectProduce, setInspectProduce] = useState<ProduceListing | null>(null);
@@ -38,6 +38,29 @@ export const BuyerMarketplacePage: React.FC = () => {
   return (
     <AppLayout title="Buyer Marketplace">
       <div className="flex flex-col w-full gap-4">
+        {/* Gentle Buyer Profile Completion Banner if not 100% */}
+        {buyerProfile && buyerProfile.completionPercentage < 100 && (
+          <div
+            onClick={() => navigate('/buyer/profile')}
+            className="p-3.5 bg-secondary-fixed/20 border border-secondary/30 rounded-2xl flex items-center justify-between gap-3 cursor-pointer hover:bg-secondary-fixed/30 transition-all shadow-sm"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-secondary text-on-secondary flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[20px]">shopping_cart</span>
+              </div>
+              <div>
+                <p className="font-label-sm text-label-sm font-bold text-on-surface">
+                  Buyer Profile is {buyerProfile.completionPercentage}% Complete
+                </p>
+                <p className="text-[12px] text-on-surface-variant">
+                  Set warehouse location &amp; procurement requirements for escrow trades.
+                </p>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-secondary text-[20px]">arrow_forward</span>
+          </div>
+        )}
+
         {/* Search Bar */}
         <div className="relative flex items-center bg-surface-container-low rounded-2xl h-touch-target-min px-4 gap-3 border border-outline-variant/30 focus-within:border-primary focus-within:bg-surface-container-lowest focus-within:shadow-sm transition-all mt-1">
           <span className="material-symbols-outlined text-on-surface-variant text-[20px]">search</span>

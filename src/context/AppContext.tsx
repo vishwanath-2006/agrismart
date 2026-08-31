@@ -11,7 +11,10 @@ import {
   NegotiationDeal,
   TransporterOption,
   OrderItem,
-  OrderStatus
+  OrderStatus,
+  FarmerProfileData,
+  BuyerProfileData,
+  TransporterProfileData
 } from '../types';
 import {
   INITIAL_USERS,
@@ -38,6 +41,15 @@ interface AppContextType {
   loginWithGoogle: () => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
   assignRole: (role: UserRole) => Promise<boolean>;
+
+  // Role Profile Data & Persistence
+  farmerProfile: FarmerProfileData;
+  buyerProfile: BuyerProfileData;
+  transporterProfile: TransporterProfileData;
+  saveFarmerProfile: (data: Partial<FarmerProfileData>) => Promise<boolean>;
+  saveBuyerProfile: (data: Partial<BuyerProfileData>) => Promise<boolean>;
+  saveTransporterProfile: (data: Partial<TransporterProfileData>) => Promise<boolean>;
+  isProfileComplete: (role: UserRole) => boolean;
 
   produceListings: ProduceListing[];
   addProduceListing: (listing: {
@@ -133,6 +145,217 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [activeOrder, setActiveOrder] = useState<OrderItem | null>(orders[0] || null);
 
+  const DEFAULT_FARMER_PROFILE: FarmerProfileData = {
+    fullName: 'Ramesh Kumar',
+    phone: '9845012345',
+    farmLocation: 'Mysore Farm Gate 2, Plot 4A',
+    village: 'Nanjangud Rural',
+    district: 'Mysore',
+    state: 'Karnataka',
+    pincode: '570001',
+    farmSize: 4.5,
+    farmSizeUnit: 'Acres',
+    mainCrops: ['Tomatoes', 'Onions', 'Potatoes'],
+    otherCrops: 'Green Chillies, Coriander',
+    farmingExperience: '12 Years',
+    farmingType: 'Organic Certified',
+    preferredMarkets: ['Mysore Bandipalya', 'Bangalore KR Market', 'Kolar APMC'],
+    primaryMarket: 'Mysore Bandipalya',
+    secondaryMarket: 'Bangalore KR Market',
+    preferredSellingDistance: 'Within 50 km',
+    typicalProduceQuantity: '10 - 25 Quintals',
+    sellingFrequency: 'Weekly',
+    preferredBuyerType: 'Wholesale Traders',
+    expectedPricePreference: 28,
+    minimumPricePreference: 22,
+    profileCompleted: true,
+    completionPercentage: 100
+  };
+
+  const DEFAULT_BUYER_PROFILE: BuyerProfileData = {
+    fullName: 'Priya Sharma',
+    phone: '9876543210',
+    email: 'procurement@xyztraders.com',
+    businessName: 'XYZ Agri Trades & Cold Storage Ltd.',
+    businessType: 'Wholesaler',
+    businessLocation: 'KR Market Depot 4B',
+    city: 'Bangalore Central',
+    district: 'Bengaluru Urban',
+    state: 'Karnataka',
+    pincode: '560002',
+    receivingAddress: 'Depot 4B, APMC Yard, Yeshwantpur, Bengaluru',
+    primaryReceivingMarket: 'Yeshwantpur APMC',
+    secondaryReceivingMarket: 'KR Market',
+    preferredDeliveryWindow: 'Early Morning (5 AM - 9 AM)',
+    preferredVegetables: ['Tomatoes', 'Potatoes', 'Onions', 'Capsicum'],
+    preferredQuantity: '20 - 50 Quintals',
+    minimumOrderQuantity: '500 kg',
+    typicalPurchaseQuantity: '5 Tons',
+    buyingFrequency: 'Daily',
+    preferredQuality: 'Grade A & Premium',
+    preferredPriceRange: '₹20 - ₹45 / kg',
+    preferredMarkets: ['Kolar APMC', 'Mysore APMC', 'Chikkaballapur'],
+    preferredDeliveryDistance: 'Within 100 km',
+    profileCompleted: true,
+    completionPercentage: 100
+  };
+
+  const DEFAULT_TRANSPORTER_PROFILE: TransporterProfileData = {
+    fullName: 'Manjunath Gowda',
+    phone: '9741198765',
+    email: 'logistics@gowdatransports.com',
+    currentLocation: 'Mandya Central Bypass',
+    vehicleType: '4-Wheeler Tempo Reefer (Cold Chain)',
+    vehicleRegistrationNumber: 'KA-09-E-4421',
+    vehicleCapacity: '4.0 Metric Tons',
+    vehicleModel: 'Tata 407 LPT Reefer',
+    vehicleAge: '3 Years',
+    operatingLocation: 'Mysore - Bangalore Highway Corridor',
+    preferredPickupAreas: ['Mysore', 'Mandya', 'Hunsur', 'Channapatna'],
+    preferredDeliveryMarkets: ['Bangalore KR Market', 'Yeshwantpur APMC', 'Hosur Terminal'],
+    availability: 'Available Now (GPS Active)',
+    workingDays: 'All 7 Days',
+    preferredPickupTime: 'Morning & Evening Dispatches',
+    transportChargePerKm: 22,
+    minimumTripCharge: 1800,
+    additionalLoadingCharge: 350,
+    profileCompleted: true,
+    completionPercentage: 100
+  };
+
+  const [farmerProfile, setFarmerProfile] = useState<FarmerProfileData>(() => {
+    const saved = localStorage.getItem('agrismart_farmer_profile');
+    return saved ? JSON.parse(saved) : DEFAULT_FARMER_PROFILE;
+  });
+
+  const [buyerProfile, setBuyerProfile] = useState<BuyerProfileData>(() => {
+    const saved = localStorage.getItem('agrismart_buyer_profile');
+    return saved ? JSON.parse(saved) : DEFAULT_BUYER_PROFILE;
+  });
+
+  const [transporterProfile, setTransporterProfile] = useState<TransporterProfileData>(() => {
+    const saved = localStorage.getItem('agrismart_transporter_profile');
+    return saved ? JSON.parse(saved) : DEFAULT_TRANSPORTER_PROFILE;
+  });
+
+  // Load profile data from Supabase
+  const loadRoleProfiles = async (userId: string) => {
+    try {
+      const [farmerRes, buyerRes, transpRes] = await Promise.allSettled([
+        supabase.from('farmer_profiles').select('*').eq('user_id', userId).single(),
+        supabase.from('buyer_profiles').select('*').eq('user_id', userId).single(),
+        supabase.from('transporter_profiles').select('*').eq('user_id', userId).single()
+      ]);
+
+      if (farmerRes.status === 'fulfilled' && farmerRes.value.data) {
+        const d = farmerRes.value.data;
+        const loaded: FarmerProfileData = {
+          id: d.id,
+          userId: d.user_id,
+          fullName: d.full_name || '',
+          phone: d.phone || '',
+          farmLocation: d.farm_location || '',
+          village: d.village || '',
+          district: d.district || '',
+          state: d.state || '',
+          pincode: d.pincode || '',
+          latitude: d.latitude,
+          longitude: d.longitude,
+          farmSize: Number(d.farm_size) || 0,
+          farmSizeUnit: d.farm_size_unit || 'Acres',
+          mainCrops: d.main_crops ? d.main_crops.split(', ') : [],
+          otherCrops: d.other_crops || '',
+          farmingExperience: d.farming_experience || '',
+          farmingType: d.farming_type || '',
+          preferredMarkets: d.preferred_markets ? d.preferred_markets.split(', ') : [],
+          primaryMarket: d.primary_market || '',
+          secondaryMarket: d.secondary_market || '',
+          preferredSellingDistance: d.preferred_selling_distance || '',
+          typicalProduceQuantity: d.typical_produce_quantity || '',
+          sellingFrequency: d.selling_frequency || '',
+          preferredBuyerType: d.preferred_buyer_type || '',
+          expectedPricePreference: Number(d.expected_price_preference) || undefined,
+          minimumPricePreference: Number(d.minimum_price_preference) || undefined,
+          profileCompleted: Boolean(d.profile_completed),
+          completionPercentage: d.completion_percentage || 25
+        };
+        setFarmerProfile(loaded);
+        localStorage.setItem('agrismart_farmer_profile', JSON.stringify(loaded));
+      }
+
+      if (buyerRes.status === 'fulfilled' && buyerRes.value.data) {
+        const d = buyerRes.value.data;
+        const loaded: BuyerProfileData = {
+          id: d.id,
+          userId: d.user_id,
+          fullName: d.full_name || '',
+          phone: d.phone || '',
+          email: d.email || '',
+          businessName: d.business_name || '',
+          businessType: d.business_type || '',
+          businessLocation: d.business_location || '',
+          city: d.city || '',
+          district: d.district || '',
+          state: d.state || '',
+          pincode: d.pincode || '',
+          latitude: d.latitude,
+          longitude: d.longitude,
+          receivingAddress: d.receiving_address || '',
+          primaryReceivingMarket: d.primary_receiving_market || '',
+          secondaryReceivingMarket: d.secondary_receiving_market || '',
+          preferredDeliveryWindow: d.preferred_delivery_window || '',
+          preferredVegetables: d.preferred_vegetables ? d.preferred_vegetables.split(', ') : [],
+          preferredQuantity: d.preferred_quantity || '',
+          minimumOrderQuantity: d.minimum_order_quantity || '',
+          typicalPurchaseQuantity: d.typical_purchase_quantity || '',
+          buyingFrequency: d.buying_frequency || '',
+          preferredQuality: d.preferred_quality || '',
+          preferredPriceRange: d.preferred_price_range || '',
+          preferredMarkets: d.preferred_markets ? d.preferred_markets.split(', ') : [],
+          preferredDeliveryDistance: d.preferred_delivery_distance || '',
+          profileCompleted: Boolean(d.profile_completed),
+          completionPercentage: d.completion_percentage || 25
+        };
+        setBuyerProfile(loaded);
+        localStorage.setItem('agrismart_buyer_profile', JSON.stringify(loaded));
+      }
+
+      if (transpRes.status === 'fulfilled' && transpRes.value.data) {
+        const d = transpRes.value.data;
+        const loaded: TransporterProfileData = {
+          id: d.id,
+          userId: d.user_id,
+          fullName: d.full_name || '',
+          phone: d.phone || '',
+          email: d.email || '',
+          currentLocation: d.current_location || '',
+          latitude: d.latitude,
+          longitude: d.longitude,
+          vehicleType: d.vehicle_type || '',
+          vehicleRegistrationNumber: d.vehicle_registration_number || '',
+          vehicleCapacity: d.vehicle_capacity || '',
+          vehicleModel: d.vehicle_model || '',
+          vehicleAge: d.vehicle_age || '',
+          operatingLocation: d.operating_location || '',
+          preferredPickupAreas: d.preferred_pickup_areas ? d.preferred_pickup_areas.split(', ') : [],
+          preferredDeliveryMarkets: d.preferred_delivery_markets ? d.preferred_delivery_markets.split(', ') : [],
+          availability: d.availability || '',
+          workingDays: d.working_days || '',
+          preferredPickupTime: d.preferred_pickup_time || '',
+          transportChargePerKm: Number(d.transport_charge_per_km) || 20,
+          minimumTripCharge: Number(d.minimum_trip_charge) || 1500,
+          additionalLoadingCharge: Number(d.additional_loading_charge) || 300,
+          profileCompleted: Boolean(d.profile_completed),
+          completionPercentage: d.completion_percentage || 20
+        };
+        setTransporterProfile(loaded);
+        localStorage.setItem('agrismart_transporter_profile', JSON.stringify(loaded));
+      }
+    } catch (err) {
+      console.warn('Load role profiles notice:', err);
+    }
+  };
+
   // Supabase Auth Listener
   useEffect(() => {
     const initAuth = async () => {
@@ -142,7 +365,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSupabaseUser(session?.user ?? null);
 
         if (session?.user) {
-          // Fetch profile
+          // Fetch main profile
           const { data: profile } = await supabase
             .from('profiles')
             .select('*')
@@ -153,6 +376,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setCurrentRole(profile.role as UserRole);
             localStorage.setItem('agrismart_role', profile.role);
           }
+
+          loadRoleProfiles(session.user.id);
         }
       } catch (err) {
         console.warn('Supabase auth getSession warning:', err);
@@ -179,6 +404,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setCurrentRole(profile.role as UserRole);
             localStorage.setItem('agrismart_role', profile.role);
           }
+
+          loadRoleProfiles(session.user.id);
         } catch (err) {
           console.warn('Profile fetch warning:', err);
         }
@@ -189,6 +416,141 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       subscription.unsubscribe();
     };
   }, []);
+
+  const saveFarmerProfile = async (data: Partial<FarmerProfileData>): Promise<boolean> => {
+    const updated: FarmerProfileData = { ...farmerProfile, ...data };
+    setFarmerProfile(updated);
+    localStorage.setItem('agrismart_farmer_profile', JSON.stringify(updated));
+
+    if (supabaseUser) {
+      try {
+        await supabase.from('farmer_profiles').upsert({
+          user_id: supabaseUser.id,
+          full_name: updated.fullName,
+          phone: updated.phone,
+          farm_location: updated.farmLocation,
+          village: updated.village,
+          district: updated.district,
+          state: updated.state,
+          pincode: updated.pincode,
+          latitude: updated.latitude,
+          longitude: updated.longitude,
+          farm_size: updated.farmSize,
+          farm_size_unit: updated.farmSizeUnit,
+          main_crops: Array.isArray(updated.mainCrops) ? updated.mainCrops.join(', ') : updated.mainCrops,
+          other_crops: updated.otherCrops,
+          farming_experience: updated.farmingExperience,
+          farming_type: updated.farmingType,
+          preferred_markets: Array.isArray(updated.preferredMarkets) ? updated.preferredMarkets.join(', ') : updated.preferredMarkets,
+          primary_market: updated.primaryMarket,
+          secondary_market: updated.secondaryMarket,
+          preferred_selling_distance: updated.preferredSellingDistance,
+          typical_produce_quantity: updated.typicalProduceQuantity,
+          selling_frequency: updated.sellingFrequency,
+          preferred_buyer_type: updated.preferredBuyerType,
+          expected_price_preference: updated.expectedPricePreference,
+          minimum_price_preference: updated.minimumPricePreference,
+          profile_completed: updated.profileCompleted,
+          completion_percentage: updated.completionPercentage,
+          updated_at: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn('Farmer profile save notice:', err);
+      }
+    }
+    return true;
+  };
+
+  const saveBuyerProfile = async (data: Partial<BuyerProfileData>): Promise<boolean> => {
+    const updated: BuyerProfileData = { ...buyerProfile, ...data };
+    setBuyerProfile(updated);
+    localStorage.setItem('agrismart_buyer_profile', JSON.stringify(updated));
+
+    if (supabaseUser) {
+      try {
+        await supabase.from('buyer_profiles').upsert({
+          user_id: supabaseUser.id,
+          full_name: updated.fullName,
+          phone: updated.phone,
+          email: updated.email,
+          business_name: updated.businessName,
+          business_type: updated.businessType,
+          business_location: updated.businessLocation,
+          city: updated.city,
+          district: updated.district,
+          state: updated.state,
+          pincode: updated.pincode,
+          latitude: updated.latitude,
+          longitude: updated.longitude,
+          receiving_address: updated.receivingAddress,
+          primary_receiving_market: updated.primaryReceivingMarket,
+          secondary_receiving_market: updated.secondaryReceivingMarket,
+          preferred_delivery_window: updated.preferredDeliveryWindow,
+          preferred_vegetables: Array.isArray(updated.preferredVegetables) ? updated.preferredVegetables.join(', ') : updated.preferredVegetables,
+          preferred_quantity: updated.preferredQuantity,
+          minimum_order_quantity: updated.minimumOrderQuantity,
+          typical_purchase_quantity: updated.typicalPurchaseQuantity,
+          buying_frequency: updated.buyingFrequency,
+          preferred_quality: updated.preferredQuality,
+          preferred_price_range: updated.preferredPriceRange,
+          preferred_markets: Array.isArray(updated.preferredMarkets) ? updated.preferredMarkets.join(', ') : updated.preferredMarkets,
+          preferred_delivery_distance: updated.preferredDeliveryDistance,
+          profile_completed: updated.profileCompleted,
+          completion_percentage: updated.completionPercentage,
+          updated_at: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn('Buyer profile save notice:', err);
+      }
+    }
+    return true;
+  };
+
+  const saveTransporterProfile = async (data: Partial<TransporterProfileData>): Promise<boolean> => {
+    const updated: TransporterProfileData = { ...transporterProfile, ...data };
+    setTransporterProfile(updated);
+    localStorage.setItem('agrismart_transporter_profile', JSON.stringify(updated));
+
+    if (supabaseUser) {
+      try {
+        await supabase.from('transporter_profiles').upsert({
+          user_id: supabaseUser.id,
+          full_name: updated.fullName,
+          phone: updated.phone,
+          email: updated.email,
+          current_location: updated.currentLocation,
+          latitude: updated.latitude,
+          longitude: updated.longitude,
+          vehicle_type: updated.vehicleType,
+          vehicle_registration_number: updated.vehicleRegistrationNumber,
+          vehicle_capacity: updated.vehicleCapacity,
+          vehicle_model: updated.vehicleModel,
+          vehicle_age: updated.vehicleAge,
+          operating_location: updated.operatingLocation,
+          preferred_pickup_areas: Array.isArray(updated.preferredPickupAreas) ? updated.preferredPickupAreas.join(', ') : updated.preferredPickupAreas,
+          preferred_delivery_markets: Array.isArray(updated.preferredDeliveryMarkets) ? updated.preferredDeliveryMarkets.join(', ') : updated.preferredDeliveryMarkets,
+          availability: updated.availability,
+          working_days: updated.workingDays,
+          preferred_pickup_time: updated.preferredPickupTime,
+          transport_charge_per_km: updated.transportChargePerKm,
+          minimum_trip_charge: updated.minimumTripCharge,
+          additional_loading_charge: updated.additionalLoadingCharge,
+          profile_completed: updated.profileCompleted,
+          completion_percentage: updated.completionPercentage,
+          updated_at: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn('Transporter profile save notice:', err);
+      }
+    }
+    return true;
+  };
+
+  const isProfileComplete = (role: UserRole): boolean => {
+    if (role === 'farmer') return Boolean(farmerProfile.profileCompleted);
+    if (role === 'buyer') return Boolean(buyerProfile.profileCompleted);
+    return Boolean(transporterProfile.profileCompleted);
+  };
 
   // Sync to local storage
   useEffect(() => {
@@ -636,6 +998,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         loginWithGoogle,
         logout,
         assignRole,
+        farmerProfile,
+        buyerProfile,
+        transporterProfile,
+        saveFarmerProfile,
+        saveBuyerProfile,
+        saveTransporterProfile,
+        isProfileComplete,
         produceListings,
         addProduceListing,
         selectedProduce,
