@@ -45,6 +45,23 @@ export const MarketPricesPage: React.FC = () => {
     navigate('/farmer/price-history');
   };
 
+  const formatReportedDate = (raw: string): string => {
+    const clean = raw.replace('Reported ', '').trim();
+    if (clean.includes('/')) {
+      const parts = clean.split('/');
+      if (parts.length === 3) {
+        const day = parts[0];
+        const monthIndex = parseInt(parts[1], 10) - 1;
+        const year = parts[2];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        if (monthIndex >= 0 && monthIndex < 12) {
+          return `${day} ${months[monthIndex]} ${year}`;
+        }
+      }
+    }
+    return clean || '31 Aug 2026';
+  };
+
   return (
     <AppLayout title="Market Prices" showBack onBack={() => navigate('/farmer/market-comparison')}>
       <div className="flex flex-col w-full gap-4">
@@ -72,7 +89,7 @@ export const MarketPricesPage: React.FC = () => {
           <span className="material-symbols-outlined text-on-surface-variant text-[20px]">search</span>
           <input
             type="text"
-            placeholder="Search crop, mandi, or commodity..."
+            placeholder="Search commodity or market..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             className="flex-1 bg-transparent outline-none font-body-md text-on-surface placeholder:text-outline-variant"
@@ -122,54 +139,50 @@ export const MarketPricesPage: React.FC = () => {
               <div
                 key={item.id}
                 onClick={() => handleSelectMandi(item)}
-                className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card hover:border-primary/40 active:scale-[0.99] transition-all cursor-pointer"
+                className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card hover:border-primary/40 active:scale-[0.99] transition-all cursor-pointer group"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
+                <div className="flex items-start justify-between gap-3">
+                  {/* Left: Commodity & Mandi Location */}
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h4 className="font-title-md text-title-md font-bold text-on-surface">{item.cropName}</h4>
-                      <span className="text-[10px] font-bold text-primary bg-primary-fixed/30 px-2 py-0.5 rounded-full">
+                      <h4 className="font-title-md text-title-md font-bold text-on-surface truncate">{item.cropName}</h4>
+                      <span className="text-[10px] font-bold text-primary bg-primary-fixed/30 px-2 py-0.5 rounded-full shrink-0">
                         {getCropCategory(item.cropName)}
                       </span>
                     </div>
                     <p className="text-[13px] text-on-surface-variant flex items-center gap-1 mt-0.5">
                       <span className="material-symbols-outlined text-[15px] text-primary">location_on</span>
-                      {item.mandiName}, {item.state}
+                      <span>{item.mandiName}, {item.state}</span>
                     </p>
                   </div>
-                  <div className="text-right">
-                    <div className="text-headline-lg-mobile font-headline-lg-mobile font-bold text-primary">
+
+                  {/* Right: Modal Price & Min/Max Range */}
+                  <div className="text-right shrink-0">
+                    <div className="text-headline-lg-mobile font-headline-lg-mobile font-bold text-primary leading-none">
                       ₹{item.modalPrice}
                       <span className="text-label-sm font-normal text-on-surface-variant">/kg</span>
                     </div>
-                    <div
-                      className={`inline-flex items-center text-[12px] font-bold px-2 py-0.5 rounded-lg mt-0.5 ${
-                        item.trend === 'up'
-                          ? 'text-tertiary bg-tertiary-fixed/30'
-                          : item.trend === 'down'
-                          ? 'text-error bg-error-container/30'
-                          : 'text-on-surface-variant bg-surface-container'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[14px] mr-0.5">
-                        {item.trend === 'up' ? 'trending_up' : item.trend === 'down' ? 'trending_down' : 'trending_flat'}
-                      </span>
-                      {item.changePercent > 0 ? `+${item.changePercent}%` : `${item.changePercent}%`}
+                    <div className="text-[12px] font-semibold text-on-surface-variant mt-1">
+                      ₹{item.minPrice} – ₹{item.maxPrice}<span className="text-[11px] font-normal">/kg</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Price Range & Arrival info */}
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-outline-variant/20 text-[12px] text-on-surface-variant">
-                  <div>
-                    Range: <span className="font-semibold text-on-surface">₹{item.minPrice} – ₹{item.maxPrice}</span>
+                {/* Bottom: Government reported status & View Details */}
+                <div className="flex items-center justify-between mt-3.5 pt-3 border-t border-outline-variant/20">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0f5238] bg-[#0f5238]/10 px-2.5 py-0.5 rounded-full">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#0f5238]" />
+                      Government reported
+                    </span>
+                    <span className="text-[12px] text-on-surface-variant font-medium">
+                      {formatReportedDate(item.lastUpdated)}
+                    </span>
                   </div>
-                  <div>
-                    Arrivals: <span className="font-semibold text-on-surface">{item.arrivalsTonnes} Tonnes</span>
-                  </div>
-                  <div className="text-[11px] text-on-surface-variant/80 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[13px]">schedule</span>
-                    {item.lastUpdated}
+
+                  <div className="flex items-center gap-1 text-[12px] font-semibold text-primary group-hover:underline">
+                    <span>View Details</span>
+                    <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                   </div>
                 </div>
               </div>
