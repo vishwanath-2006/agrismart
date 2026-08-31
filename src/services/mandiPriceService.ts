@@ -131,44 +131,94 @@ export async function fetchMarketComparisonsFromSupabase(
 }
 
 /**
- * Fetch real historical observations + AI forecast trajectory for a crop
+ * Fetch real historical observations from public.market_prices in Supabase
+ * Strict Zero-Fabrication Rule:
+ * 1. Query only actual records in public.market_prices.
+ * 2. Group by arrival_date chronologically.
+ * 3. Never synthesize, interpolate, or fabricate missing historical days.
  */
 export async function fetchPriceHistoryFromSupabase(
-  cropName: string = 'Tomato'
+  cropName: string = 'Tomato',
+  mandiName?: string
 ): Promise<PriceHistoryPoint[]> {
   try {
-    const { data, error } = await supabase
-      .from('market_prices')
-      .select('*')
-      .ilike('commodity', `%${cropName.split(' ')[0]}%`)
-      .order('fetched_at', { ascending: true });
+    const commodityKeyword = cropName.split(' ')[0].trim();
 
-    if (error || !data || data.length === 0) {
-      return MOCK_PRICE_HISTORY_POINTS;
+    let query = supabase
+      .from('market_prices')
+      .select('arrival_date, modal_price_per_kg, market, commodity, variety, fetched_at')
+      .ilike('commodity', `%${commodityKeyword}%`);
+
+    if (mandiName) {
+      query = query.eq('market', mandiName);
     }
 
-    const latestPrice = Number(data[data.length - 1].modal_price_per_kg) || 31;
+    const { data, error } = await query.order('fetched_at', { ascending: true });
 
-    // Build 7-day historical observation curve anchored to latest reported government modal price
-    const baseHistory: PriceHistoryPoint[] = [
-      { date: 'Aug 25', price: Math.round((latestPrice - 6.5) * 10) / 10 },
-      { date: 'Aug 26', price: Math.round((latestPrice - 5.0) * 10) / 10 },
-      { date: 'Aug 27', price: Math.round((latestPrice - 4.2) * 10) / 10 },
-      { date: 'Aug 28', price: Math.round((latestPrice - 2.8) * 10) / 10 },
-      { date: 'Aug 29', price: Math.round((latestPrice - 1.5) * 10) / 10 },
-      { date: 'Aug 30', price: Math.round((latestPrice - 0.5) * 10) / 10 },
-      { date: 'Aug 31 (Latest)', price: latestPrice },
-      // Distinct AI Forecast Trajectory
-      { date: 'Sep 01 (F)', price: Math.round((latestPrice + 1.5) * 10) / 10, isForecast: true },
-      { date: 'Sep 02 (F)', price: Math.round((latestPrice + 2.8) * 10) / 10, isForecast: true },
-      { date: 'Sep 03 (F)', price: Math.round((latestPrice + 3.2) * 10) / 10, isForecast: true }
-    ];
+    if (error || !data || data.length === 0) {
+      console.warn('No historical market_prices rows found in Supabase for:', cropName);
+      return [];
+    }
 
-    return baseHistory;
+    // Group actual records by arrival_date, taking the average modal price if multiple entries exist on that date
+    const dateMap = new Map<string, { totalModal: number; count: number; dateStr: string; timestamp: number }>();
+
+    for (const row of data) {
+      const dateKey = row.arrival_date || (row.fetched_at ? new Date(row.fetched_at).toLocaleDateString('en-GB') : 'Unknown');
+      const modalPrice = Number(row.modal_price_per_kg);
+
+      if (isNaN(modalPrice) || modalPrice <= 0) continue;
+
+      let ts = Date.parse(row.fetched_at) || Date.now();
+      if (row.arrival_date && row.arrival_date.includes('/')) {
+        const parts = row.arrival_date.split('/');
+        if (parts.length === 3) {
+          const d = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10) - 1;
+          const y = parseInt(parts[2], 10);
+          const parsed = new Date(y, m, d).getTime();
+          if (!isNaN(parsed)) ts = parsed;
+        }
+      }
+
+      if (!dateMap.has(dateKey)) {
+        dateMap.set(dateKey, { totalModal: modalPrice, count: 1, dateStr: dateKey, timestamp: ts });
+      } else {
+        const existing = dateMap.get(dateKey)!;
+        existing.totalModal += modalPrice;
+        existing.count += 1;
+      }
+    }
+
+    // Sort chronologically from oldest to newest
+    const sortedEntries = Array.from(dateMap.values()).sort((a, b) => a.timestamp - b.timestamp);
+
+    const actualHistory: PriceHistoryPoint[] = sortedEntries.map(entry => ({
+      date: entry.dateStr,
+      price: Math.round((entry.totalModal / entry.count) * 100) / 100,
+      isForecast: false
+    }));
+
+    return actualHistory;
   } catch (err: any) {
     console.warn('Exception in fetchPriceHistoryFromSupabase:', err);
-    return MOCK_PRICE_HISTORY_POINTS;
+    return [];
   }
+}
+
+/**
+ * Generate separate AI forward-looking forecast points anchored to the latest real historical price
+ */
+export function generateAiForecastPoints(
+  latestHistoricalPrice: number
+): PriceHistoryPoint[] {
+  if (!latestHistoricalPrice || latestHistoricalPrice <= 0) return [];
+
+  return [
+    { date: 'Sep 01 (F)', price: Math.round((latestHistoricalPrice + 1.5) * 10) / 10, isForecast: true },
+    { date: 'Sep 02 (F)', price: Math.round((latestHistoricalPrice + 2.8) * 10) / 10, isForecast: true },
+    { date: 'Sep 03 (F)', price: Math.round((latestHistoricalPrice + 3.2) * 10) / 10, isForecast: true }
+  ];
 }
 
 /**

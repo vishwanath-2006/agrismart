@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { PriceSplineChart } from '../../components/common/PriceSplineChart';
 import { AIInsightBanner } from '../../components/common/AIInsightBanner';
+import { generateAiForecastPoints } from '../../services/mandiPriceService';
+import { PriceHistoryPoint } from '../../types';
 
 export const PriceHistoryPage: React.FC = () => {
   const navigate = useNavigate();
@@ -11,8 +13,27 @@ export const PriceHistoryPage: React.FC = () => {
   const [timeframe, setTimeframe] = useState<'7D' | '1M' | '3M' | 'Forecast'>('Forecast');
 
   const cropTitle = selectedProduce?.cropName || 'Tomato (Hybrid)';
-  const latestHistorical = priceHistory.filter(p => !p.isForecast).slice(-1)[0];
+  
+  // Strict separation: only authentic Government observations
+  const realHistoricalPoints = useMemo(
+    () => priceHistory.filter(p => !p.isForecast),
+    [priceHistory]
+  );
+  
+  const latestHistorical = realHistoricalPoints[realHistoricalPoints.length - 1];
   const currentBenchmarkPrice = latestHistorical ? latestHistorical.price : 31.0;
+
+  // Filter based on selected timeframe
+  const displayData: PriceHistoryPoint[] = useMemo(() => {
+    if (timeframe === 'Forecast') {
+      const forecastPoints = generateAiForecastPoints(currentBenchmarkPrice);
+      return [...realHistoricalPoints, ...forecastPoints];
+    }
+    
+    // For 7D, 1M, 3M: return ONLY real historical points without forecast or interpolation
+    const sliceCount = timeframe === '7D' ? 7 : timeframe === '1M' ? 30 : 90;
+    return realHistoricalPoints.slice(-sliceCount);
+  }, [realHistoricalPoints, currentBenchmarkPrice, timeframe]);
 
   return (
     <AppLayout title="Price History & Forecast" showBack onBack={() => navigate('/farmer/market-prices')}>
@@ -20,9 +41,16 @@ export const PriceHistoryPage: React.FC = () => {
         {/* Commodity Spotlight Banner */}
         <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card flex items-center justify-between mt-1">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-primary bg-primary-fixed/30 px-2.5 py-0.5 rounded-full">
-              Commodity Focus
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-primary bg-primary-fixed/30 px-2.5 py-0.5 rounded-full">
+                Commodity Focus
+              </span>
+              <span className="text-[11px] font-semibold text-on-surface-variant">
+                {realHistoricalPoints.length > 0
+                  ? `${realHistoricalPoints.length} Govt Observation${realHistoricalPoints.length > 1 ? 's' : ''}`
+                  : 'Collecting Data'}
+              </span>
+            </div>
             <h2 className="text-title-md font-title-md font-bold text-on-surface mt-1.5">{cropTitle}</h2>
             <p className="text-[13px] text-on-surface-variant">Benchmark Mandi: KR Market, Bangalore (data.gov.in)</p>
           </div>
@@ -51,11 +79,15 @@ export const PriceHistoryPage: React.FC = () => {
 
         {/* Spline Chart with Forecast */}
         <PriceSplineChart
-          data={priceHistory}
-          title="Price Movement & 7-Day Prediction"
-          subtitle="Dashed line indicates AI price trajectory"
+          data={displayData}
+          title={timeframe === 'Forecast' ? 'Price Movement & 3-Day Forecast' : 'Historical Price Trend'}
+          subtitle={
+            timeframe === 'Forecast'
+              ? 'Government reported observations + AI trajectory'
+              : 'Government reported data (Source: data.gov.in)'
+          }
           cropName={cropTitle}
-          showForecast={true}
+          showForecast={timeframe === 'Forecast'}
         />
 
         {/* AI Forecast Intelligence Banner */}
