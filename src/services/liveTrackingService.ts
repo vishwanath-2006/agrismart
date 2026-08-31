@@ -5,6 +5,8 @@ export interface TransporterLocationRecord {
   order_id: string;
   delivery_id?: string;
   transporter_id?: string | null;
+  farmer_id?: string | null;
+  buyer_id?: string | null;
   transporter_name?: string;
   vehicle_plate?: string;
   latitude: number;
@@ -52,6 +54,8 @@ export async function pushDriverLocation(
       order_id: location.order_id,
       delivery_id: location.delivery_id || location.order_id,
       transporter_id: location.transporter_id || null,
+      farmer_id: location.farmer_id || null,
+      buyer_id: location.buyer_id || null,
       transporter_name: location.transporter_name || 'Driver',
       vehicle_plate: location.vehicle_plate || '',
       latitude: location.latitude,

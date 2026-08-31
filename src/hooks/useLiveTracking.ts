@@ -30,7 +30,7 @@ export function useLiveTracking({
   destinationCoords,
   originCoords
 }: UseLiveTrackingProps) {
-  const { supabaseUser, transporterProfile, activeOrder } = useApp();
+  const { supabaseUser, transporterProfile, farmerProfile, buyerProfile, activeOrder } = useApp();
 
   const [location, setLocation] = useState<TransporterLocationRecord | null>(null);
   const [gpsStatus, setGpsStatus] = useState<GpsTrackingStatus>('CONNECTING');
@@ -104,10 +104,27 @@ export function useLiveTracking({
         second: '2-digit'
       });
 
+      const isValidUuid = (val?: string | null) =>
+        Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+
+      const farmerId = isValidUuid(activeOrder?.farmer?.id)
+        ? activeOrder?.farmer?.id
+        : isValidUuid(farmerProfile?.userId)
+        ? farmerProfile.userId
+        : null;
+
+      const buyerId = isValidUuid(activeOrder?.buyer?.id)
+        ? activeOrder?.buyer?.id
+        : isValidUuid(buyerProfile?.userId)
+        ? buyerProfile.userId
+        : null;
+
       const updatedRecord: TransporterLocationRecord = {
         order_id: orderId,
         delivery_id: activeOrder?.orderNumber || orderId,
         transporter_id: supabaseUser?.id || null,
+        farmer_id: farmerId,
+        buyer_id: buyerId,
         transporter_name: transporterProfile?.fullName || activeOrder?.transporter?.name || 'Driver',
         vehicle_plate: transporterProfile?.vehicleRegistrationNumber || activeOrder?.transporter?.vehiclePlate || 'KA-09-E-4421',
         latitude,
