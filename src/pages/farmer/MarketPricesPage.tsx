@@ -73,7 +73,7 @@ export const MarketPricesPage: React.FC = () => {
           <span className="material-symbols-outlined text-on-surface-variant text-[20px]">search</span>
           <input
             type="text"
-            placeholder="Search commodity or market..."
+            placeholder="Search crop or market..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             className="flex-1 bg-transparent outline-none font-body-md text-on-surface placeholder:text-outline-variant"

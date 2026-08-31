@@ -127,7 +127,7 @@ export const PriceHistoryPage: React.FC = () => {
             title={timeframe === 'Forecast' ? 'Price Movement & 3-Day Forecast' : 'Historical Price Trend'}
             subtitle={
               timeframe === 'Forecast'
-                ? 'Government reported observations + AI trajectory'
+                ? 'Solid line = Government reported • Dashed line = AI estimate'
                 : 'Government reported data (Source: data.gov.in)'
             }
             cropName={cropTitle}
@@ -188,7 +188,7 @@ export const PriceHistoryPage: React.FC = () => {
             onClick={() => navigate('/farmer/add-produce')}
             className="w-full h-touch-target-min bg-primary text-on-primary rounded-2xl font-title-md text-title-md font-bold shadow-lg shadow-primary/20 hover:bg-primary-container active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
-            <span>List Produce at Recommended Price (₹31/kg)</span>
+            <span>List Produce @ ₹{currentBenchmarkPrice.toFixed(0)}/kg</span>
             <span className="material-symbols-outlined text-[22px]">add_circle</span>
           </button>
         </div>

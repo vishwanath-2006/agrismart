@@ -93,7 +93,7 @@ export const MarketComparisonPage: React.FC = () => {
         {/* Header */}
         <div className="pt-1">
           <h2 className="text-title-md font-title-md font-bold text-on-surface">Market Comparison</h2>
-          <p className="text-[13px] text-on-surface-variant">Find the best market for your crop</p>
+          <p className="text-[13px] text-on-surface-variant">Find the market where you may earn the most after transport.</p>
         </div>
 
         {/* Search Bar */}
