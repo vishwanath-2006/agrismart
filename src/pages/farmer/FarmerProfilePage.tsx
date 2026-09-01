@@ -66,11 +66,11 @@ export const FarmerProfilePage: React.FC = () => {
         setFormData(prev => {
           const updatedVillage = geoResult?.village || prev.village || '';
           const updatedDistrict = geoResult?.district || prev.district || '';
-          const updatedState = geoResult?.state || prev.state || 'Karnataka';
+          const updatedState = geoResult?.state || prev.state || '';
           const updatedPincode = geoResult?.pincode || prev.pincode || '';
-          const updatedFarmLocation = geoResult?.displayName
-            ? `GPS: ${geoResult.displayName.split(',').slice(0, 3).join(', ')}`
-            : `GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+          const updatedFarmLocation = geoResult?.farmLocation
+            ? `GPS: ${geoResult.farmLocation}`
+            : (geoResult?.displayName ? `GPS: ${geoResult.displayName.split(',').slice(0, 3).join(', ')}` : `GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
 
           return {
             ...prev,
