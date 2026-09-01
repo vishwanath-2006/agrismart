@@ -36,7 +36,7 @@ export const LiveTrackingPage: React.FC = () => {
   if (!order) {
     return (
       <AppLayout
-        title="Live Delivery Tracking"
+        title="Live Dispatch Tracking"
         showBack
         onBack={() => {
           if (currentRole === 'transporter') navigate('/transporter/dashboard');
@@ -46,7 +46,7 @@ export const LiveTrackingPage: React.FC = () => {
       >
         <div className="flex flex-col items-center justify-center p-8 text-center bg-surface-container-lowest rounded-2xl border border-outline-variant/30 gap-3 mt-6">
           <span className="material-symbols-outlined text-[44px] text-on-surface-variant/50">local_shipping</span>
-          <h3 className="text-title-md font-bold text-on-surface">No active delivery</h3>
+          <h3 className="text-title-md font-bold text-on-surface">No active dispatch</h3>
           <p className="text-body-md text-on-surface-variant">There is no shipment currently being tracked.</p>
           <button
             onClick={() => {
@@ -72,6 +72,36 @@ export const LiveTrackingPage: React.FC = () => {
     order.status === 'COMPLETED';
 
   const isGpsActive = gpsStatus === 'LIVE' && latitude !== null && longitude !== null;
+
+  // Status Badge Metadata
+  const getDeliveryStatusMeta = (status: string) => {
+    switch (status) {
+      case 'ORDER_PLACED':
+        return { label: 'Order Placed', badgeClass: 'bg-surface-container text-on-surface-variant border-outline-variant/40' };
+      case 'TRANSPORTER_ASSIGNED':
+        return { label: 'Transporter Assigned', badgeClass: 'bg-secondary-fixed text-on-secondary-fixed border-secondary/30' };
+      case 'PICKED_UP':
+        return { label: 'Out for Delivery', badgeClass: 'bg-primary-fixed text-on-primary-fixed border-primary/30' };
+      case 'IN_TRANSIT':
+        return { label: 'In Transit', badgeClass: 'bg-primary text-on-primary border-primary' };
+      case 'ARRIVING':
+        return { label: 'Arriving Soon', badgeClass: 'bg-tertiary-fixed text-on-tertiary-fixed border-tertiary/30' };
+      case 'DELIVERED':
+        return { label: 'Delivered', badgeClass: 'bg-primary-fixed text-on-primary-fixed border-primary/30' };
+      case 'PAYMENT_RELEASED':
+      case 'COMPLETED':
+        return { label: 'Completed', badgeClass: 'bg-primary-fixed text-on-primary-fixed border-primary/30' };
+      default:
+        return { label: 'In Transit', badgeClass: 'bg-primary text-on-primary border-primary' };
+    }
+  };
+
+  const statusMeta = getDeliveryStatusMeta(order.status);
+
+  // Distance Metrics
+  const totalRouteDistanceKm = order.routeDetails?.distanceKm || 145;
+  const effectiveRemainingKm = distanceRemainingKm !== null && distanceRemainingKm !== undefined ? distanceRemainingKm : 145;
+  const distanceCoveredKm = Math.max(0, Math.min(totalRouteDistanceKm, totalRouteDistanceKm - effectiveRemainingKm));
 
   // 4-Step Delivery Progress State Mapping
   const progressSteps = [
@@ -105,82 +135,101 @@ export const LiveTrackingPage: React.FC = () => {
     }
   ];
 
+  // Crates calculation (assuming standard 20kg crates)
+  const totalCrates = Math.ceil(order.quantityKg / 20);
+
   return (
     <AppLayout
-      title="Live Delivery Tracking"
+      title="Live Dispatch Tracking"
       showBack
+      maxWidthClass="max-w-6xl lg:max-w-7xl w-full"
       onBack={() => {
         if (currentRole === 'transporter') navigate('/transporter/dashboard');
         else if (currentRole === 'buyer') navigate('/buyer/marketplace');
         else navigate('/farmer/dashboard');
       }}
     >
-      <div className="flex flex-col w-full gap-4 pb-12">
+      <div className="flex flex-col w-full gap-2.5 pb-2">
         
-        {/* 1. Header with Order Context */}
-        <div className="pt-1">
-          <div className="flex items-center justify-between">
-            <h2 className="text-title-md font-title-md font-bold text-on-surface">Live Delivery Tracking</h2>
-            <span className="text-[12px] font-bold text-primary bg-primary-fixed/30 px-2.5 py-0.5 rounded-full">
+        {/* 1. Header with Highlighted Produce Badges & Order Reference */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 pt-0.5">
+          <div>
+            <h1 className="text-xl lg:text-2xl font-bold text-gray-900 leading-tight">Live Delivery Tracking</h1>
+            
+            {/* Highlighted Produce Details */}
+            <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-xs">
+              {/* Crop */}
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200">
+                🌱 {order.cropName} {order.variety ? `(${order.variety.split(' ')[0]})` : '(Hybrid)'}
+              </span>
+
+              {/* Net Weight */}
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-800 font-medium border border-gray-200">
+                ⚖️ {order.quantityKg ? `${order.quantityKg.toLocaleString()} kg` : '500 kg'}
+              </span>
+
+              {/* Price / Total Value */}
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 font-semibold border border-amber-200">
+                💰 ₹{(order.totalAmount || order.produceSubtotal || 18500).toLocaleString()} <span className="text-[11px] text-amber-700 font-normal ml-1">(₹{order.agreedPricePerKg || 37}/kg)</span>
+              </span>
+
+              {/* Route / Destination */}
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 font-medium border border-blue-200">
+                📍 {order.farmer.location.split(',')[0]} <span className="mx-1 text-blue-400">→</span> {order.buyer.warehouseAddress.split(',')[0]}
+              </span>
+            </div>
+          </div>
+
+          {/* Retained Order Badge */}
+          <div className="self-start md:self-auto">
+            <span className="px-3 py-1 text-xs font-bold tracking-wide text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full">
               Order #{order.orderNumber}
             </span>
           </div>
-          <p className="text-[13px] text-on-surface-variant mt-0.5">
-            {order.cropName} • {order.quantityKg} kg • {order.farmer.location} → {order.buyer.warehouseAddress.split(',')[0]}
-          </p>
         </div>
 
-        {/* 2. Prominent Live Status Card */}
-        <div className={`p-4 rounded-2xl border flex flex-col gap-1 transition-all ${
+        {/* 2. Compact Live Telemetry Status Banner */}
+        <div className={`px-3.5 py-1.5 rounded-xl border flex items-center justify-between gap-2 text-xs shadow-subtle ${
           isGpsActive
-            ? 'bg-primary-fixed/20 border-primary/40 shadow-sm'
+            ? 'bg-primary-fixed/20 border-primary/40'
             : isTripStarted
             ? 'bg-surface-container-low border-outline-variant/30'
             : 'bg-surface-container-lowest border-outline-variant/30'
         }`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className={`w-3 h-3 rounded-full ${
-                isGpsActive
-                  ? 'bg-primary animate-pulse'
-                  : isTripStarted
-                  ? 'bg-secondary animate-ping'
-                  : 'bg-outline'
-              }`} />
-              <span className="font-bold text-body-md text-on-surface">
-                {isGpsActive
-                  ? '● LIVE — Driver Location Updating'
-                  : isTripStarted
-                  ? '○ Location Connecting / Staging'
-                  : '○ Trip Not Started'}
-              </span>
-            </div>
-            <span className="text-[11px] font-medium text-on-surface-variant">
-              {isGpsActive && lastUpdated ? `Updated at ${lastUpdated}` : isTripStarted ? 'Waiting for GPS' : 'Staged at pickup'}
+          <div className="flex items-center gap-2 truncate">
+            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+              isGpsActive
+                ? 'bg-primary animate-pulse'
+                : isTripStarted
+                ? 'bg-secondary animate-ping'
+                : 'bg-outline'
+            }`} />
+            <span className="font-bold text-on-surface truncate">
+              {isGpsActive
+                ? '● LIVE — Real-Time Telemetry Active'
+                : isTripStarted
+                ? '○ Acquiring Vehicle GPS'
+                : '○ Staged at Farm Origin'}
             </span>
+            <span className="text-on-surface-variant hidden md:inline">• Direct distance remaining: ~{effectiveRemainingKm} km</span>
           </div>
-
-          <p className="text-[12px] text-on-surface-variant pl-5">
-            {isGpsActive
-              ? `Realtime GPS active from transporter device. Direct distance remaining: ~${distanceRemainingKm || 145} km.`
-              : isTripStarted
-              ? 'Waiting for the driver\'s next GPS update from the transit corridor.'
-              : 'Live location will begin sharing when the transporter starts the trip.'}
-          </p>
+          <span className="text-[11px] text-on-surface-variant shrink-0 font-medium">
+            {isGpsActive && lastUpdated ? `Updated at ${lastUpdated}` : 'GPS Ready'}
+          </span>
         </div>
 
-        {/* Permission Denied Alert (If driver denied GPS) */}
+        {/* Location Permission Alert */}
         {gpsStatus === 'PERMISSION_DENIED' && (
-          <div className="p-3.5 bg-error-container/30 text-error rounded-2xl border border-error/20 text-label-sm font-semibold flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[20px]">location_disabled</span>
-              <span>{errorMessage || 'Location permission is required for live tracking.'}</span>
+          <div className="p-2.5 bg-error-container/30 text-error rounded-xl border border-error/20 text-xs font-semibold flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 truncate">
+              <span className="material-symbols-outlined text-[18px]">location_disabled</span>
+              <span className="truncate">{errorMessage || 'Location permission required for live telemetry.'}</span>
             </div>
             {isDriverRole && (
               <button
                 type="button"
                 onClick={startDriverTracking}
-                className="px-3 py-1 bg-error text-on-error rounded-xl text-[12px] font-bold shrink-0 hover:bg-error/90"
+                className="px-2.5 py-0.5 bg-error text-on-error rounded-lg text-xs font-bold shrink-0 hover:bg-error/90"
               >
                 Enable GPS
               </button>
@@ -188,191 +237,268 @@ export const LiveTrackingPage: React.FC = () => {
           </div>
         )}
 
-        {/* 3. Real Leaflet Map */}
-        <div className="rounded-2xl overflow-hidden shadow-card border border-outline-variant/30">
-          <LiveMapPreview
-            origin={order.farmer.location}
-            destination={order.buyer.warehouseAddress}
-            driverLat={latitude}
-            driverLng={longitude}
-            originLat={originCoords.lat}
-            originLng={originCoords.lng}
-            destLat={destinationCoords.lat}
-            destLng={destinationCoords.lng}
-            speedKmh={speedKmh}
-            accuracy={accuracy}
-            lastUpdated={lastUpdated}
-            gpsStatus={gpsStatus}
-            distanceRemainingKm={distanceRemainingKm}
-            currentLocationDesc={
-              latitude && longitude
-                ? `Driver GPS: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`
-                : isTripStarted
-                ? 'Waiting for driver GPS satellite lock...'
-                : 'Vehicle staged at Farm Gate'
-            }
-            isOptimizedRoute={true}
-          />
-        </div>
-
-        {/* 4. Telemetry Metric Cards */}
-        <div className="grid grid-cols-3 gap-2.5">
-          <div className="bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 text-center">
-            <span className="text-[11px] text-on-surface-variant font-medium block">GPS Telemetry</span>
-            <div className="flex items-center justify-center gap-1 mt-0.5">
-              <span className="material-symbols-outlined text-primary text-[16px]">sensors</span>
-              <span className="text-body-md font-bold text-primary">
-                {isGpsActive ? 'Active' : isTripStarted ? 'Acquiring' : 'Standby'}
-              </span>
+        {/* 3. Main 2-Column Desktop / Single-Column Mobile Compressed Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 items-start">
+          
+          {/* Left Column (7 cols): Map + 3 Telemetry Metrics */}
+          <div className="lg:col-span-7 flex flex-col gap-2.5">
+            
+            {/* Live Leaflet Map Container */}
+            <div className="rounded-xl overflow-hidden shadow-card border border-outline-variant/30 bg-surface-container-lowest">
+              <LiveMapPreview
+                origin={order.farmer.location}
+                destination={order.buyer.warehouseAddress}
+                driverLat={latitude}
+                driverLng={longitude}
+                originLat={originCoords.lat}
+                originLng={originCoords.lng}
+                destLat={destinationCoords.lat}
+                destLng={destinationCoords.lng}
+                speedKmh={speedKmh}
+                accuracy={accuracy}
+                lastUpdated={lastUpdated}
+                gpsStatus={gpsStatus}
+                distanceRemainingKm={effectiveRemainingKm}
+                heightClass="h-[220px] sm:h-[250px] lg:h-[270px]"
+                currentLocationDesc={
+                  latitude && longitude
+                    ? `GPS: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E`
+                    : isTripStarted
+                    ? 'Acquiring satellite lock...'
+                    : 'Staged at Farm Gate'
+                }
+                isOptimizedRoute={true}
+              />
             </div>
-            <span className="text-[10px] text-on-surface-variant block">Driver GPS</span>
-          </div>
 
-          <div className="bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 text-center">
-            <span className="text-[11px] text-on-surface-variant font-medium block">Vehicle Speed</span>
-            <div className="flex items-center justify-center gap-1 mt-0.5">
-              <span className="material-symbols-outlined text-secondary text-[16px]">speed</span>
-              <span className="text-body-md font-bold text-secondary">
-                {speedKmh !== null && speedKmh !== undefined ? `${speedKmh} km/h` : '0 km/h'}
-              </span>
-            </div>
-            <span className="text-[10px] text-on-surface-variant block">
-              {speedKmh && speedKmh > 0 ? 'In Motion' : 'Stationary'}
-            </span>
-          </div>
-
-          <div className="bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 text-center">
-            <span className="text-[11px] text-on-surface-variant font-medium block">Distance Left</span>
-            <div className="flex items-center justify-center gap-1 mt-0.5">
-              <span className="material-symbols-outlined text-tertiary text-[16px]">navigation</span>
-              <span className="text-body-md font-bold text-on-surface">
-                {distanceRemainingKm !== null && distanceRemainingKm !== undefined
-                  ? `~${distanceRemainingKm} km`
-                  : '~145 km'}
-              </span>
-            </div>
-            <span className="text-[10px] text-tertiary font-semibold">Calculated</span>
-          </div>
-        </div>
-
-        {/* 5. Driver & Vehicle Information Card */}
-        <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img
-              src={order.transporter?.avatarUrl || order.farmer.avatar}
-              alt="Transporter"
-              className="w-12 h-12 rounded-xl object-cover border border-outline-variant/20 shrink-0"
-            />
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h4 className="font-label-sm font-bold text-on-surface">
-                  {order.transporter?.name || 'Marcus Vance'}
-                </h4>
-                <span className="text-[10px] font-semibold text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded">
-                  Demo profile
-                </span>
-              </div>
-              <p className="text-[12px] text-on-surface-variant">
-                {order.transporter?.vehicleType || 'Tata 407 Reefer'} • {order.transporter?.vehiclePlate || 'KA-09-E-4421'}
-              </p>
-              <p className="text-[11px] text-primary font-semibold mt-0.5">
-                Status: {isTripStarted ? 'On trip to delivery' : 'Assigned to order'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => alert(`Calling driver at ${order.transporter?.phone || '+91 97411 98765'}`)}
-              className="w-10 h-10 rounded-xl bg-primary-fixed/30 text-primary flex items-center justify-center hover:bg-primary-fixed/50 transition-colors"
-              aria-label="Call driver"
-            >
-              <span className="material-symbols-outlined text-[20px]">call</span>
-            </button>
-            <button
-              onClick={() => alert(`Messaging dispatch for Order #${order.orderNumber}`)}
-              className="w-10 h-10 rounded-xl bg-surface-container text-on-surface-variant flex items-center justify-center hover:bg-surface-container-high transition-colors"
-              aria-label="Message driver"
-            >
-              <span className="material-symbols-outlined text-[20px]">chat</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 6. 4-Step Delivery Progress Timeline */}
-        <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-title-md text-title-md font-bold text-on-surface">Delivery Progress</h3>
-            <span className="text-[12px] font-bold text-primary">Order #{order.orderNumber}</span>
-          </div>
-
-          <div className="space-y-4 pt-2">
-            {progressSteps.map((step, idx) => (
-              <div key={step.id} className="flex items-start gap-3 relative">
-                {/* Timeline connector line */}
-                {idx < progressSteps.length - 1 && (
-                  <div
-                    className={`absolute left-4 top-8 bottom-0 w-0.5 ${
-                      step.isDone ? 'bg-primary' : 'bg-outline-variant/40'
-                    }`}
-                  />
-                )}
-
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ${
-                    step.isDone
-                      ? 'bg-primary text-on-primary shadow-sm'
-                      : step.isCurrent
-                      ? 'bg-tertiary text-on-tertiary ring-4 ring-tertiary-fixed/40'
-                      : 'bg-surface-container text-on-surface-variant'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[16px]">
-                    {step.isDone ? 'check' : step.isCurrent ? 'navigation' : 'radio_button_unchecked'}
+            {/* 3 Highlighted Telemetry Metric Cards */}
+            <div className="grid grid-cols-3 gap-2">
+              
+              {/* Metric 1: Current Vehicle Speed */}
+              <div className="bg-surface-container-lowest p-2.5 rounded-xl border border-outline-variant/30 shadow-subtle flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+                    Vehicle Speed
+                  </span>
+                  <span className="material-symbols-outlined text-secondary text-[16px]">speed</span>
+                </div>
+                <div className="my-1">
+                  <div className="text-xl lg:text-2xl font-bold leading-tight text-on-surface">
+                    {speedKmh !== null && speedKmh !== undefined ? `${speedKmh}` : '0'}
+                    <span className="text-xs font-medium text-on-surface-variant ml-0.5">km/h</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className={`w-1.5 h-1.5 rounded-full ${speedKmh && speedKmh > 0 ? 'bg-primary animate-pulse' : 'bg-outline'}`} />
+                  <span className="text-[10px] font-semibold text-on-surface-variant truncate">
+                    {speedKmh && speedKmh > 0 ? 'In Motion' : 'Stationary'}
                   </span>
                 </div>
+              </div>
 
-                <div className="flex-1 pb-1">
-                  <div className="flex items-baseline justify-between gap-1">
-                    <h4
-                      className={`text-[14px] font-bold ${
-                        step.isDone || step.isCurrent ? 'text-on-surface' : 'text-on-surface-variant/70'
-                      }`}
-                    >
-                      {step.title}
-                    </h4>
+              {/* Metric 2: Distance Remaining & Covered */}
+              <div className="bg-surface-container-lowest p-2.5 rounded-xl border border-outline-variant/30 shadow-subtle flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+                    Remaining
+                  </span>
+                  <span className="material-symbols-outlined text-primary text-[16px]">navigation</span>
+                </div>
+                <div className="my-1">
+                  <div className="text-xl lg:text-2xl font-bold leading-tight text-primary">
+                    ~{effectiveRemainingKm}
+                    <span className="text-xs font-medium text-on-surface-variant ml-0.5">km</span>
                   </div>
-                  <p className="text-[12px] text-on-surface-variant mt-0.5">{step.desc}</p>
+                </div>
+                <div className="text-[10px] text-on-surface-variant font-medium truncate">
+                  <span className="font-bold text-on-surface">{distanceCoveredKm} km</span> covered of {totalRouteDistanceKm} km
                 </div>
               </div>
-            ))}
+
+              {/* Metric 3: GPS Telemetry Status */}
+              <div className="bg-surface-container-lowest p-2.5 rounded-xl border border-outline-variant/30 shadow-subtle flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+                    GPS Signal
+                  </span>
+                  <span className="material-symbols-outlined text-tertiary text-[16px]">sensors</span>
+                </div>
+                <div className="my-1">
+                  <div className="text-base lg:text-lg font-bold leading-tight text-on-surface truncate">
+                    {isGpsActive ? 'Signal Locked' : isTripStarted ? 'Connecting' : 'Standby'}
+                  </div>
+                </div>
+                <div className="text-[10px] text-on-surface-variant font-medium truncate">
+                  {accuracy ? `±${accuracy}m precision` : 'Active Satellite Lock'}
+                </div>
+              </div>
+
+            </div>
+
           </div>
+
+          {/* Right Column (5 cols): Produce Details Card, Delivery Progress & Action Button */}
+          <div className="lg:col-span-5 flex flex-col gap-2.5">
+            
+            {/* Produce Delivery Details Card */}
+            <div className="bg-surface-container-lowest p-3 lg:p-3.5 rounded-xl border border-outline-variant/30 shadow-card flex flex-col gap-2">
+              
+              {/* Card Header */}
+              <div className="flex items-center justify-between pb-1.5 border-b border-outline-variant/20">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-6 rounded-lg bg-primary-fixed/40 text-primary flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[16px]">inventory_2</span>
+                  </div>
+                  <h3 className="text-sm font-bold text-on-surface">
+                    Produce Delivery Details
+                  </h3>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusMeta.badgeClass}`}>
+                  {statusMeta.label}
+                </span>
+              </div>
+
+              {/* Produce Details Grid */}
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                
+                {/* Produce & Variety */}
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] font-medium text-on-surface-variant uppercase tracking-wider">
+                    Produce
+                  </span>
+                  <p className="font-bold text-on-surface truncate mt-0.5">
+                    {order.cropName} {order.variety ? `— ${order.variety}` : ''}
+                  </p>
+                </div>
+
+                {/* Total Quantity / Weight */}
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] font-medium text-on-surface-variant uppercase tracking-wider">
+                    Weight / Crates
+                  </span>
+                  <p className="font-bold text-on-surface truncate mt-0.5">
+                    {order.quantityKg.toLocaleString()} kg <span className="text-[11px] font-normal text-on-surface-variant">({totalCrates} crates)</span>
+                  </p>
+                </div>
+
+                {/* Dispatch Origin */}
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] font-medium text-on-surface-variant uppercase tracking-wider">
+                    Farm Origin
+                  </span>
+                  <p className="font-bold text-on-surface truncate mt-0.5">
+                    {order.farmer.location}
+                  </p>
+                </div>
+
+                {/* Destination */}
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] font-medium text-on-surface-variant uppercase tracking-wider">
+                    Target Mandi / Depot
+                  </span>
+                  <p className="font-bold text-on-surface truncate mt-0.5">
+                    {order.buyer.warehouseAddress.split(',')[0]}
+                  </p>
+                </div>
+
+                {/* ETA */}
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] font-medium text-on-surface-variant uppercase tracking-wider">
+                    Estimated ETA
+                  </span>
+                  <p className="font-bold text-on-surface truncate mt-0.5">
+                    {order.estimatedDeliveryTime || 'Today, 03:45 PM'}
+                  </p>
+                </div>
+
+                {/* Trip Status */}
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] font-medium text-on-surface-variant uppercase tracking-wider">
+                    Trip Status
+                  </span>
+                  <p className="font-bold text-primary truncate mt-0.5">
+                    {statusMeta.label}
+                  </p>
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* 4-Step Delivery Progress Tracker */}
+            <div className="bg-surface-container-lowest p-3 lg:p-3.5 rounded-xl border border-outline-variant/30 shadow-card flex flex-col gap-2">
+              <div className="flex items-center justify-between pb-1.5 border-b border-outline-variant/20">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-6 rounded-lg bg-tertiary-fixed/40 text-tertiary flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[16px]">route</span>
+                  </div>
+                  <h3 className="text-sm font-bold text-on-surface">Delivery Progress</h3>
+                </div>
+                <span className="text-[11px] font-bold text-primary">Live Tracking</span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2 pt-0.5">
+                {progressSteps.map((step) => (
+                  <div key={step.id} className="flex items-start gap-2 p-1.5 rounded-lg bg-surface-container-low/40 border border-outline-variant/15">
+                    <div
+                      className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                        step.isDone
+                          ? 'bg-primary text-on-primary shadow-xs'
+                          : step.isCurrent
+                          ? 'bg-tertiary text-on-tertiary ring-2 ring-tertiary-fixed/50'
+                          : 'bg-surface-container text-on-surface-variant'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[11px]">
+                        {step.isDone ? 'check' : step.isCurrent ? 'navigation' : 'radio_button_unchecked'}
+                      </span>
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <h4
+                        className={`text-[11px] font-bold truncate ${
+                          step.isDone || step.isCurrent ? 'text-on-surface' : 'text-on-surface-variant/70'
+                        }`}
+                      >
+                        {step.title}
+                      </h4>
+                      <p className="text-[10px] text-on-surface-variant truncate">{step.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Action Button */}
+            <div>
+              {isDriverRole ? (
+                <button
+                  onClick={() => navigate('/transporter/delivery-confirmation')}
+                  className="w-full h-10 lg:h-11 bg-primary text-on-primary rounded-xl font-bold text-xs lg:text-sm shadow-md shadow-primary/20 hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                  <span>Arrived at Warehouse • Confirm Delivery</span>
+                  <span className="material-symbols-outlined text-[18px]">task_alt</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    if (currentRole === 'buyer') navigate('/buyer/marketplace');
+                    else navigate('/farmer/dashboard');
+                  }}
+                  className="w-full h-9 lg:h-10 bg-surface-container-lowest border border-outline-variant/30 text-on-surface rounded-xl font-semibold text-xs hover:bg-surface-container-low active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-subtle"
+                >
+                  <span className="material-symbols-outlined text-[16px]">space_dashboard</span>
+                  <span>Back to Dashboard</span>
+                </button>
+              )}
+            </div>
+
+          </div>
+
         </div>
 
-        {/* 7. Action Button */}
-        <div className="pt-2">
-          {isDriverRole ? (
-            <button
-              onClick={() => navigate('/transporter/delivery-confirmation')}
-              className="w-full min-h-[52px] bg-primary text-on-primary rounded-2xl font-title-md text-title-md font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-            >
-              <span>Arrived at Warehouse • Confirm Delivery</span>
-              <span className="material-symbols-outlined text-[20px]">task_alt</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                if (currentRole === 'buyer') navigate('/buyer/marketplace');
-                else navigate('/farmer/dashboard');
-              }}
-              className="w-full min-h-[50px] bg-surface-container text-on-surface rounded-2xl font-label-sm font-semibold hover:bg-surface-container-high active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-            >
-              <span className="material-symbols-outlined text-[18px]">space_dashboard</span>
-              <span>Back to Dashboard</span>
-            </button>
-          )}
-        </div>
       </div>
     </AppLayout>
   );
 };
+

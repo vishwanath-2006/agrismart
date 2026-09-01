@@ -6,7 +6,7 @@ import { UserRole } from '../../types';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentRole, switchRole, loginWithGoogle } = useApp();
+  const { currentRole, switchRole, loginAsDemoUser, loginWithGoogle } = useApp();
 
   const [selectedRole, setSelectedRole] = useState<UserRole>(currentRole || 'farmer');
   const [identifier, setIdentifier] = useState('9845012345');
@@ -28,14 +28,14 @@ export const LoginPage: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     setAuthError(null);
-    switchRole(selectedRole);
+    loginAsDemoUser(selectedRole);
 
     setTimeout(() => {
       setIsLoading(false);
       if (selectedRole === 'farmer') navigate('/farmer/dashboard');
       else if (selectedRole === 'buyer') navigate('/buyer/marketplace');
       else navigate('/transporter/dashboard');
-    }, 400);
+    }, 300);
   };
 
   const handleGoogleSignIn = async () => {
@@ -57,9 +57,9 @@ export const LoginPage: React.FC = () => {
     <div className="min-h-screen bg-surface flex flex-col justify-start">
       {/* Top Header Bar */}
       <div className="h-16 px-margin-mobile flex items-center justify-between bg-surface/90 backdrop-blur-xl border-b border-outline-variant/20 sticky top-0 z-50">
-        <div className="flex items-center gap-2.5">
-          <img alt="AgriSmart Logo" className="h-10 w-10 object-contain rounded-full shadow-sm" src={LOGO_URL} />
-          <span className="font-title-md text-title-md text-primary font-bold tracking-tight">AgriSmart</span>
+        <div className="flex items-center gap-2">
+          <img alt="AgriSmart AI Logo" className="h-8 w-auto object-contain" src={LOGO_URL} />
+          <span className="font-title-md text-title-md text-primary font-bold">AgriSmart AI</span>
         </div>
         <span className="text-[12px] font-semibold text-primary bg-primary-fixed/30 px-3 py-1 rounded-full uppercase tracking-wider">
           Marketplace

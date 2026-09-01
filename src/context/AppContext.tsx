@@ -45,6 +45,8 @@ interface AppContextType {
   currentUser: UserProfile;
   switchRole: (role: UserRole) => void;
 
+  isDemoAuthenticated: boolean;
+  loginAsDemoUser: (role: UserRole) => void;
   // Supabase Auth
   supabaseUser: User | null;
   supabaseSession: Session | null;
@@ -75,7 +77,7 @@ interface AppContextType {
     harvestDate: string;
     shelfLifeDays: number;
     imageUrl?: string;
-      imageUrls?: string[];
+    imageUrls?: string[];
     description?: string;
   }) => ProduceListing;
   selectedProduce: ProduceListing | null;
@@ -127,11 +129,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [isProfileLoading, setIsProfileLoading] = useState<boolean>(false);
 
+  const [isDemoAuthenticated, setIsDemoAuthenticated] = useState<boolean>(() => {
+    const saved = localStorage.getItem('agrismart_demo_auth');
+    return saved !== null ? saved === 'true' : true;
+  });
+
   // Load persisted role
   const [currentRole, setCurrentRole] = useState<UserRole>(() => {
     const saved = localStorage.getItem('agrismart_role');
     return (saved as UserRole) || 'farmer';
   });
+
+  const loginAsDemoUser = (role: UserRole) => {
+    setIsDemoAuthenticated(true);
+    localStorage.setItem('agrismart_demo_auth', 'true');
+    setCurrentRole(role);
+    localStorage.setItem('agrismart_role', role);
+  };
 
   const [produceListings, setProduceListings] = useState<ProduceListing[]>(() => {
     const saved = localStorage.getItem('agrismart_produce');
@@ -761,6 +775,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } finally {
       setSupabaseUser(null);
       setSupabaseSession(null);
+      setIsDemoAuthenticated(false);
+      localStorage.removeItem('agrismart_demo_auth');
       localStorage.removeItem('agrismart_role');
       setCurrentRole('farmer');
     }
@@ -808,7 +824,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     harvestDate: string;
     shelfLifeDays: number;
     imageUrl?: string;
-      imageUrls?: string[];
+    imageUrls?: string[];
     description?: string;
   }): ProduceListing => {
     const newListing: ProduceListing = {
@@ -820,7 +836,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cropName: data.cropName,
       variety: data.variety,
       category: data.category,
-      imageUrl: data.imageUrl || TOMATO_IMG,
+      imageUrl: data.imageUrl || (data.imageUrls && data.imageUrls[0]) || TOMATO_IMG,
+      imageUrls: data.imageUrls || (data.imageUrl ? [data.imageUrl] : [TOMATO_IMG]),
       qualityGrade: data.qualityGrade,
       quantityKg: data.quantityKg,
       minOrderQuantityKg: data.minOrderQuantityKg,
@@ -1155,6 +1172,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentRole,
         currentUser,
         switchRole,
+        isDemoAuthenticated,
+        loginAsDemoUser,
         supabaseUser,
         supabaseSession,
         isAuthLoading,

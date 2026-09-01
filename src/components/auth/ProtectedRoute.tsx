@@ -12,7 +12,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   allowedRole
 }) => {
-  const { currentRole, isAuthLoading, isProfileLoading, supabaseUser } = useApp();
+  const { currentRole, isAuthLoading, isProfileLoading, supabaseUser, isDemoAuthenticated, switchRole } = useApp();
 
   // 1. Loading state during auth and profile hydration (prevents race conditions)
   if (isAuthLoading || isProfileLoading) {
@@ -24,8 +24,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
+  const isAuthenticated = Boolean(supabaseUser || isDemoAuthenticated);
+
   // 2. Unauthenticated user -> redirect to login
-  if (!supabaseUser) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
@@ -34,8 +36,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/select-role" replace />;
   }
 
-  // 4. Role mismatch -> redirect user to their own role domain
+  // 4. Role mismatch -> in demo mode, auto-switch to allowed role to allow seamless exploration without redirect loop
   if (allowedRole && currentRole !== allowedRole) {
+    if (isDemoAuthenticated) {
+      switchRole(allowedRole);
+      return <>{children}</>;
+    }
     if (currentRole === 'farmer') {
       return <Navigate to="/farmer/dashboard" replace />;
     }
@@ -51,3 +57,4 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // 5. Authorized for this role area -> Render component
   return <>{children}</>;
 };
+

@@ -38,13 +38,15 @@ const PageLoadingFallback: React.FC = () => (
 );
 
 const RootRedirect: React.FC = () => {
-  const { currentRole, isAuthLoading, isProfileLoading, supabaseUser } = useApp();
+  const { currentRole, isAuthLoading, isProfileLoading, supabaseUser, isDemoAuthenticated } = useApp();
 
   if (isAuthLoading || isProfileLoading) {
     return <PageLoadingFallback />;
   }
 
-  if (!supabaseUser) {
+  const isAuthenticated = Boolean(supabaseUser || isDemoAuthenticated);
+
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
@@ -61,7 +63,7 @@ const RootRedirect: React.FC = () => {
   if (currentRole === 'transporter') {
     return <Navigate to="/transporter/dashboard" replace />;
   }
-  return <Navigate to="/login" replace />;
+  return <Navigate to="/farmer/dashboard" replace />;
 };
 
 export const App: React.FC = () => {
