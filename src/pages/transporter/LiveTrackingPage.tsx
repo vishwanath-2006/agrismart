@@ -426,44 +426,45 @@ export const LiveTrackingPage: React.FC = () => {
             </div>
 
             {/* 4-Step Delivery Progress Tracker */}
-            <div className="bg-surface-container-lowest p-3 lg:p-3.5 rounded-xl border border-outline-variant/30 shadow-card flex flex-col gap-2">
+            <div className="bg-surface-container-lowest p-3 lg:p-3.5 rounded-xl border border-outline-variant/30 shadow-card flex flex-col gap-2.5">
               <div className="flex items-center justify-between pb-1.5 border-b border-outline-variant/20">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-6 h-6 rounded-lg bg-tertiary-fixed/40 text-tertiary flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[16px]">route</span>
-                  </div>
-                  <h3 className="text-sm font-bold text-on-surface">Delivery Progress</h3>
-                </div>
+                <h3 className="text-sm font-bold text-on-surface">Delivery Progress</h3>
                 <span className="text-[11px] font-bold text-primary">Live Tracking</span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2 pt-0.5">
-                {progressSteps.map((step) => (
-                  <div key={step.id} className="flex items-start gap-2 p-1.5 rounded-lg bg-surface-container-low/40 border border-outline-variant/15">
+              {/* Horizontal Stepper Timeline */}
+              <div className="relative flex items-center justify-between px-2 pt-2 pb-1">
+                {/* Connecting Background Line */}
+                <div className="absolute top-[17px] left-6 right-6 h-[2px] bg-outline-variant/30 z-0" />
+                {/* Active Progress Line */}
+                <div className="absolute top-[17px] left-6 w-1/3 h-[2px] bg-primary z-0" />
+
+                {progressSteps.map((step, idx) => (
+                  <div key={step.id} className="relative z-10 flex flex-col items-center text-center flex-1">
                     <div
-                      className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                      className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
                         step.isDone
                           ? 'bg-primary text-on-primary shadow-xs'
                           : step.isCurrent
-                          ? 'bg-tertiary text-on-tertiary ring-2 ring-tertiary-fixed/50'
-                          : 'bg-surface-container text-on-surface-variant'
+                          ? 'bg-surface-container-lowest border-2 border-primary text-primary ring-2 ring-primary/20'
+                          : 'bg-surface-container border border-outline-variant/40 text-on-surface-variant'
                       }`}
                     >
-                      <span className="material-symbols-outlined text-[11px]">
-                        {step.isDone ? 'check' : step.isCurrent ? 'navigation' : 'radio_button_unchecked'}
-                      </span>
+                      {step.isDone ? (
+                        <span className="material-symbols-outlined text-[13px]">check</span>
+                      ) : step.isCurrent ? (
+                        <span className="w-2 h-2 rounded-full bg-primary" />
+                      ) : (
+                        <span className="w-1.5 h-1.5 rounded-full bg-outline-variant" />
+                      )}
                     </div>
-
-                    <div className="flex-1 min-w-0">
-                      <h4
-                        className={`text-[11px] font-bold truncate ${
-                          step.isDone || step.isCurrent ? 'text-on-surface' : 'text-on-surface-variant/70'
-                        }`}
-                      >
-                        {step.title}
-                      </h4>
-                      <p className="text-[10px] text-on-surface-variant truncate">{step.desc}</p>
-                    </div>
+                    <span
+                      className={`text-[10px] mt-1.5 leading-tight font-semibold max-w-[70px] ${
+                        step.isDone || step.isCurrent ? 'text-on-surface' : 'text-on-surface-variant/70'
+                      }`}
+                    >
+                      {step.title}
+                    </span>
                   </div>
                 ))}
               </div>
