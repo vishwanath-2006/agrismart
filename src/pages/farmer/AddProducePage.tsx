@@ -237,6 +237,7 @@ export const AddProducePage: React.FC = () => {
         harvestDate: 'Today, Just Harvested',
         shelfLifeDays: Number(shelfLifeDays) || 7,
         imageUrl: selectedImages[0],
+        imageUrls: selectedImages,
         description: `Freshly harvested ${cropName} (${variety}) from ${currentUser?.location || 'Farm'}. Quality Estimate: ${qualityGrade}.`
       });
 

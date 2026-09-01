@@ -75,6 +75,7 @@ interface AppContextType {
     harvestDate: string;
     shelfLifeDays: number;
     imageUrl?: string;
+      imageUrls?: string[];
     description?: string;
   }) => ProduceListing;
   selectedProduce: ProduceListing | null;
@@ -807,6 +808,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     harvestDate: string;
     shelfLifeDays: number;
     imageUrl?: string;
+      imageUrls?: string[];
     description?: string;
   }): ProduceListing => {
     const newListing: ProduceListing = {

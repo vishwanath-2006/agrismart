@@ -35,6 +35,7 @@ export interface ProduceListing {
   variety: string;
   category: 'Vegetables' | 'Fruits' | 'Grains' | 'Pulses';
   imageUrl: string;
+  imageUrls?: string[];
   qualityGrade: 'Grade A' | 'Grade B' | 'Organic Certified' | 'Premium';
   quantityKg: number;
   minOrderQuantityKg: number;

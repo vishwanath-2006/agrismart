@@ -47,13 +47,29 @@ export const ProduceDetailsModal: React.FC<ProduceDetailsModalProps> = ({
         className="bg-surface-container-lowest w-full max-w-lg rounded-3xl overflow-hidden shadow-elevated border border-outline-variant/30 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header Image with close button */}
-        <div className="relative w-full h-52 bg-surface-container-low overflow-hidden shrink-0">
-          <img
-            src={produce.imageUrl}
-            alt={produce.cropName}
-            className="w-full h-full object-cover"
-          />
+        {/* Header Image Carousel with close button */}
+        <div className="relative w-full h-52 bg-surface-container-low overflow-hidden shrink-0 group">
+          {/* Snap container */}
+          <div className="w-full h-full flex overflow-x-auto snap-x snap-mandatory no-scrollbar">
+            {(produce.imageUrls && produce.imageUrls.length > 0 ? produce.imageUrls : [produce.imageUrl]).map((img, idx, arr) => (
+              <div key={idx} className="w-full h-full shrink-0 snap-center relative">
+                <img
+                  src={img}
+                  alt={`${produce.cropName} ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+          
+          {/* Photo Count Indicator */}
+          {(produce.imageUrls && produce.imageUrls.length > 1) && (
+            <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold text-white z-10 flex items-center gap-1 shadow-sm pointer-events-none">
+              <span className="material-symbols-outlined text-[14px]">photo_library</span>
+              {produce.imageUrls.length} Photos (Swipe to View)
+            </div>
+          )}
+
           <button
             onClick={onClose}
             className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-colors"

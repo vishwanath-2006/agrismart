@@ -184,6 +184,15 @@ export const BuyerMarketplacePage: React.FC = () => {
                     alt={produce.cropName}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
+                  
+                  {/* Photo Count Indicator for Feed */}
+                  {(produce.imageUrls && produce.imageUrls.length > 1) && (
+                    <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full text-[10px] font-bold text-white flex items-center gap-1 pointer-events-none shadow-sm">
+                      <span className="material-symbols-outlined text-[12px]">photo_library</span>
+                      {produce.imageUrls.length}
+                    </div>
+                  )}
+
                   <div className="absolute top-3 left-3 bg-surface/90 backdrop-blur-md px-2.5 py-1 rounded-full text-[11px] font-bold text-primary border border-outline-variant/30 flex items-center gap-1">
                     <span className="material-symbols-outlined text-[13px]">verified</span>
                     {produce.qualityGrade}
