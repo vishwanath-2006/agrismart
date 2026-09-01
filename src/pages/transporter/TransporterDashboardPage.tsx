@@ -7,7 +7,7 @@ import { OrderItem } from '../../types';
 
 export const TransporterDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { orders, activeOrder, acceptTransportJob, setActiveOrder, transporterProfile } = useApp();
+  const { orders, activeOrder, acceptTransportJob, setActiveOrder, transporterProfile, isProfileComplete } = useApp();
   const [isOnDuty, setIsOnDuty] = useState(true);
 
   // Active in-transit or accepted delivery trip
@@ -19,6 +19,10 @@ export const TransporterDashboardPage: React.FC = () => {
   );
 
   const handleAcceptLoad = (order: OrderItem) => {
+    if (!isProfileComplete('transporter')) {
+      navigate('/transporter/profile');
+      return;
+    }
     setActiveOrder(order);
     acceptTransportJob(order.id);
     navigate('/transporter/route-optimization');

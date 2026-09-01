@@ -31,8 +31,11 @@ export const BuyerProfilePage: React.FC = () => {
     setFormData(prev => ({ ...prev, preferredVegetables: updated }));
   };
 
+  const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
+
   const handleSaveStep = async (nextStep?: number, markComplete: boolean = false) => {
     setIsSaving(true);
+    setSaveErrorMessage(null);
     const isComplete = markComplete || currentStep === totalSteps || formData.profileCompleted;
 
     const toSave: BuyerProfileData = {
@@ -51,11 +54,13 @@ export const BuyerProfilePage: React.FC = () => {
       if (isEditing) {
         setIsEditing(false);
       } else if (markComplete || currentStep === totalSteps) {
-        // Switch to completed profile summary
         setIsEditing(false);
+        navigate('/buyer/marketplace');
       } else if (nextStep) {
         setCurrentStep(nextStep);
       }
+    } else {
+      setSaveErrorMessage('Unable to save buyer profile to database. Please check your connection and try again.');
     }
   };
 

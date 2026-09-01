@@ -71,8 +71,11 @@ export const FarmerProfilePage: React.FC = () => {
     }
   };
 
+  const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
+
   const handleSaveStep = async (nextStep?: number, markComplete: boolean = false) => {
     setIsSaving(true);
+    setSaveErrorMessage(null);
     const isComplete = markComplete || currentStep === totalSteps || formData.profileCompleted;
 
     const toSave: FarmerProfileData = {
@@ -91,11 +94,13 @@ export const FarmerProfilePage: React.FC = () => {
       if (isEditing) {
         setIsEditing(false);
       } else if (markComplete || currentStep === totalSteps) {
-        // Switch to completed profile summary
         setIsEditing(false);
+        navigate('/farmer/dashboard');
       } else if (nextStep) {
         setCurrentStep(nextStep);
       }
+    } else {
+      setSaveErrorMessage('Unable to save profile to database. Please check your connection and try again.');
     }
   };
 

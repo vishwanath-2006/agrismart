@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 // Auth Pages (Lazy Loaded)
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then(m => ({ default: m.LoginPage })));
@@ -37,19 +38,31 @@ const PageLoadingFallback: React.FC = () => (
 );
 
 const RootRedirect: React.FC = () => {
-  const { currentRole, isAuthLoading } = useApp();
+  const { currentRole, isAuthLoading, isProfileLoading, isProfileComplete, supabaseUser } = useApp();
 
-  if (isAuthLoading) {
-    return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
-        <span className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
+  if (isAuthLoading || isProfileLoading) {
+    return <PageLoadingFallback />;
   }
 
-  if (currentRole === 'farmer') return <Navigate to="/farmer/dashboard" replace />;
-  if (currentRole === 'buyer') return <Navigate to="/buyer/marketplace" replace />;
-  if (currentRole === 'transporter') return <Navigate to="/transporter/dashboard" replace />;
+  if (!supabaseUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!currentRole) {
+    return <Navigate to="/select-role" replace />;
+  }
+
+  const isComplete = isProfileComplete(currentRole);
+
+  if (currentRole === 'farmer') {
+    return <Navigate to={isComplete ? "/farmer/dashboard" : "/farmer/profile"} replace />;
+  }
+  if (currentRole === 'buyer') {
+    return <Navigate to={isComplete ? "/buyer/marketplace" : "/buyer/profile"} replace />;
+  }
+  if (currentRole === 'transporter') {
+    return <Navigate to={isComplete ? "/transporter/dashboard" : "/transporter/profile"} replace />;
+  }
   return <Navigate to="/login" replace />;
 };
 
@@ -62,31 +75,164 @@ export const App: React.FC = () => {
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
-            <Route path="/select-role" element={<RoleSelectionPage />} />
+            <Route
+              path="/select-role"
+              element={
+                <ProtectedRoute requireOnboarding={false}>
+                  <RoleSelectionPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Farmer Routes */}
-            <Route path="/farmer/dashboard" element={<FarmerDashboardPage />} />
-            <Route path="/farmer/market-comparison" element={<MarketComparisonPage />} />
-            <Route path="/farmer/market-prices" element={<MarketPricesPage />} />
-            <Route path="/farmer/price-history" element={<PriceHistoryPage />} />
-            <Route path="/farmer/add-produce" element={<AddProducePage />} />
-            <Route path="/farmer/live-tracking" element={<LiveTrackingPage />} />
-            <Route path="/farmer/profile" element={<FarmerProfilePage />} />
+            <Route
+              path="/farmer/dashboard"
+              element={
+                <ProtectedRoute allowedRole="farmer" requireOnboarding={true}>
+                  <FarmerDashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/farmer/market-comparison"
+              element={
+                <ProtectedRoute allowedRole="farmer" requireOnboarding={true}>
+                  <MarketComparisonPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/farmer/market-prices"
+              element={
+                <ProtectedRoute allowedRole="farmer" requireOnboarding={true}>
+                  <MarketPricesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/farmer/price-history"
+              element={
+                <ProtectedRoute allowedRole="farmer" requireOnboarding={true}>
+                  <PriceHistoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/farmer/add-produce"
+              element={
+                <ProtectedRoute allowedRole="farmer" requireOnboarding={true}>
+                  <AddProducePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/farmer/live-tracking"
+              element={
+                <ProtectedRoute allowedRole="farmer" requireOnboarding={true}>
+                  <LiveTrackingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/farmer/profile"
+              element={
+                <ProtectedRoute allowedRole="farmer" requireOnboarding={false}>
+                  <FarmerProfilePage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Buyer Routes */}
-            <Route path="/buyer/marketplace" element={<BuyerMarketplacePage />} />
-            <Route path="/buyer/negotiation" element={<PriceNegotiationPage />} />
-            <Route path="/buyer/transporter-matching" element={<TransporterMatchingPage />} />
-            <Route path="/buyer/order-confirmation" element={<OrderConfirmationPage />} />
-            <Route path="/buyer/live-tracking" element={<LiveTrackingPage />} />
-            <Route path="/buyer/profile" element={<BuyerProfilePage />} />
+            <Route
+              path="/buyer/marketplace"
+              element={
+                <ProtectedRoute allowedRole="buyer" requireOnboarding={true}>
+                  <BuyerMarketplacePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/buyer/negotiation"
+              element={
+                <ProtectedRoute allowedRole="buyer" requireOnboarding={true}>
+                  <PriceNegotiationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/buyer/transporter-matching"
+              element={
+                <ProtectedRoute allowedRole="buyer" requireOnboarding={true}>
+                  <TransporterMatchingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/buyer/order-confirmation"
+              element={
+                <ProtectedRoute allowedRole="buyer" requireOnboarding={true}>
+                  <OrderConfirmationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/buyer/live-tracking"
+              element={
+                <ProtectedRoute allowedRole="buyer" requireOnboarding={true}>
+                  <LiveTrackingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/buyer/profile"
+              element={
+                <ProtectedRoute allowedRole="buyer" requireOnboarding={false}>
+                  <BuyerProfilePage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Transporter Routes */}
-            <Route path="/transporter/dashboard" element={<TransporterDashboardPage />} />
-            <Route path="/transporter/route-optimization" element={<RouteOptimizationPage />} />
-            <Route path="/transporter/live-tracking" element={<LiveTrackingPage />} />
-            <Route path="/transporter/delivery-confirmation" element={<DeliveryConfirmationPage />} />
-            <Route path="/transporter/profile" element={<TransporterProfilePage />} />
+            <Route
+              path="/transporter/dashboard"
+              element={
+                <ProtectedRoute allowedRole="transporter" requireOnboarding={true}>
+                  <TransporterDashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/transporter/route-optimization"
+              element={
+                <ProtectedRoute allowedRole="transporter" requireOnboarding={true}>
+                  <RouteOptimizationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/transporter/live-tracking"
+              element={
+                <ProtectedRoute allowedRole="transporter" requireOnboarding={true}>
+                  <LiveTrackingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/transporter/delivery-confirmation"
+              element={
+                <ProtectedRoute allowedRole="transporter" requireOnboarding={true}>
+                  <DeliveryConfirmationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/transporter/profile"
+              element={
+                <ProtectedRoute allowedRole="transporter" requireOnboarding={false}>
+                  <TransporterProfilePage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Catch-all fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -98,4 +244,5 @@ export const App: React.FC = () => {
 };
 
 export default App;
+
 

@@ -6,7 +6,7 @@ import { TOMATO_IMG, ONION_IMG, POTATO_IMG, WHEAT_IMG, APPLE_IMG } from '../../d
 
 export const AddProducePage: React.FC = () => {
   const navigate = useNavigate();
-  const { addProduceListing, currentUser, mandiPrices } = useApp();
+  const { addProduceListing, currentUser, mandiPrices, isProfileComplete } = useApp();
 
   const [cropName, setCropName] = useState('Tomato');
   const [variety, setVariety] = useState('Hybrid');
@@ -71,6 +71,11 @@ export const AddProducePage: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError(null);
+
+    if (!isProfileComplete('farmer')) {
+      setValidationError('Please complete your Farmer Profile before listing produce.');
+      return;
+    }
 
     if (!cropName.trim()) {
       setValidationError('Please select or enter a crop name.');
@@ -155,6 +160,26 @@ export const AddProducePage: React.FC = () => {
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             
+            {/* Onboarding Incomplete Notice Banner */}
+            {!isProfileComplete('farmer') && (
+              <div className="p-4 bg-tertiary-fixed/20 border border-tertiary/30 rounded-2xl flex items-center justify-between gap-3 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-tertiary text-[22px]">warning</span>
+                  <div>
+                    <p className="text-[13px] font-bold text-on-surface">Farmer Profile Incomplete</p>
+                    <p className="text-[12px] text-on-surface-variant">Complete your farm details before listing produce.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/farmer/profile')}
+                  className="px-3.5 py-1.5 bg-tertiary text-on-tertiary text-[12px] font-bold rounded-xl hover:bg-tertiary/90 transition-all shrink-0"
+                >
+                  Complete Profile
+                </button>
+              </div>
+            )}
+
             {/* Validation Error Alert */}
             {validationError && (
               <div className="p-3.5 bg-error-container/40 border border-error/30 text-on-error-container rounded-xl flex items-center gap-2 text-label-sm font-semibold">

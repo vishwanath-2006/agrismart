@@ -257,160 +257,180 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsProfileLoading(true);
     try {
       const [farmerRes, buyerRes, transpRes] = await Promise.allSettled([
-        supabase.from('farmer_profiles').select('*').eq('user_id', userId).single(),
-        supabase.from('buyer_profiles').select('*').eq('user_id', userId).single(),
-        supabase.from('transporter_profiles').select('*').eq('user_id', userId).single()
+        supabase.from('farmer_profiles').select('*').eq('user_id', userId).maybeSingle(),
+        supabase.from('buyer_profiles').select('*').eq('user_id', userId).maybeSingle(),
+        supabase.from('transporter_profiles').select('*').eq('user_id', userId).maybeSingle()
       ]);
 
       const userName = authUserMeta?.full_name || authUserMeta?.name || '';
       const userPhone = authUserMeta?.phone || '';
       const userEmail = authUserMeta?.email || '';
 
-      if (farmerRes.status === 'fulfilled' && farmerRes.value.data) {
-        const d = farmerRes.value.data;
-        const loaded: FarmerProfileData = {
-          id: d.id,
-          userId: d.user_id,
-          fullName: d.full_name || userName || 'Farmer',
-          phone: d.phone || userPhone || '',
-          farmLocation: d.farm_location || '',
-          village: d.village || '',
-          district: d.district || '',
-          state: d.state || 'Karnataka',
-          pincode: d.pincode || '',
-          latitude: d.latitude ? Number(d.latitude) : undefined,
-          longitude: d.longitude ? Number(d.longitude) : undefined,
-          farmSize: Number(d.farm_size) || 0,
-          farmSizeUnit: d.farm_size_unit || 'Acres',
-          mainCrops: d.main_crops ? d.main_crops.split(', ') : [],
-          otherCrops: d.other_crops || '',
-          farmingExperience: d.farming_experience || '4 - 7 Years',
-          farmingType: d.farming_type || 'Organic Certified',
-          preferredMarkets: d.preferred_markets ? d.preferred_markets.split(', ') : [],
-          primaryMarket: d.primary_market || '',
-          secondaryMarket: d.secondary_market || '',
-          preferredSellingDistance: d.preferred_selling_distance || 'Within 50 km',
-          typicalProduceQuantity: d.typical_produce_quantity || '',
-          sellingFrequency: d.selling_frequency || 'Weekly',
-          preferredBuyerType: d.preferred_buyer_type || 'Wholesale Traders',
-          expectedPricePreference: d.expected_price_preference ? Number(d.expected_price_preference) : undefined,
-          minimumPricePreference: d.minimum_price_preference ? Number(d.minimum_price_preference) : undefined,
-          profileCompleted: Boolean(d.profile_completed),
-          completionPercentage: d.completion_percentage ?? (d.profile_completed ? 100 : 25)
-        };
-        setFarmerProfile(loaded);
-        localStorage.setItem('agrismart_farmer_profile', JSON.stringify(loaded));
-      } else if (userId) {
-        // User logged in but no profile saved yet
-        setFarmerProfile(prev => {
-          const fresh: FarmerProfileData = {
-            ...prev,
-            userId,
-            fullName: userName || prev.fullName,
-            phone: userPhone || prev.phone,
-            profileCompleted: false,
-            completionPercentage: 25
+      // 1. Farmer Profile Hydration
+      if (farmerRes.status === 'fulfilled') {
+        if (farmerRes.value.data) {
+          const d = farmerRes.value.data;
+          const isComplete = Boolean(d.profile_completed);
+          const loaded: FarmerProfileData = {
+            id: d.id,
+            userId: d.user_id,
+            fullName: d.full_name || userName || 'Farmer',
+            phone: d.phone || userPhone || '',
+            farmLocation: d.farm_location || '',
+            village: d.village || '',
+            district: d.district || '',
+            state: d.state || 'Karnataka',
+            pincode: d.pincode || '',
+            latitude: d.latitude ? Number(d.latitude) : undefined,
+            longitude: d.longitude ? Number(d.longitude) : undefined,
+            farmSize: Number(d.farm_size) || 0,
+            farmSizeUnit: d.farm_size_unit || 'Acres',
+            mainCrops: d.main_crops ? d.main_crops.split(', ') : [],
+            otherCrops: d.other_crops || '',
+            farmingExperience: d.farming_experience || '4 - 7 Years',
+            farmingType: d.farming_type || 'Organic Certified',
+            preferredMarkets: d.preferred_markets ? d.preferred_markets.split(', ') : [],
+            primaryMarket: d.primary_market || '',
+            secondaryMarket: d.secondary_market || '',
+            preferredSellingDistance: d.preferred_selling_distance || 'Within 50 km',
+            typicalProduceQuantity: d.typical_produce_quantity || '',
+            sellingFrequency: d.selling_frequency || 'Weekly',
+            preferredBuyerType: d.preferred_buyer_type || 'Wholesale Traders',
+            expectedPricePreference: d.expected_price_preference ? Number(d.expected_price_preference) : undefined,
+            minimumPricePreference: d.minimum_price_preference ? Number(d.minimum_price_preference) : undefined,
+            profileCompleted: isComplete,
+            completionPercentage: d.completion_percentage ?? (isComplete ? 100 : 25)
           };
-          localStorage.setItem('agrismart_farmer_profile', JSON.stringify(fresh));
-          return fresh;
-        });
+          setFarmerProfile(loaded);
+          localStorage.setItem('agrismart_farmer_profile', JSON.stringify(loaded));
+        } else if (userId) {
+          // Clean initial profile for new user without existing DB row
+          setFarmerProfile(prev => {
+            const fresh: FarmerProfileData = {
+              ...prev,
+              userId,
+              fullName: userName || prev.fullName,
+              phone: userPhone || prev.phone,
+              profileCompleted: false,
+              completionPercentage: 25
+            };
+            localStorage.setItem('agrismart_farmer_profile', JSON.stringify(fresh));
+            return fresh;
+          });
+        }
+      } else {
+        console.warn('Farmer profile load notice (network/fetch error):', farmerRes.reason);
       }
 
-      if (buyerRes.status === 'fulfilled' && buyerRes.value.data) {
-        const d = buyerRes.value.data;
-        const loaded: BuyerProfileData = {
-          id: d.id,
-          userId: d.user_id,
-          fullName: d.full_name || userName || 'Buyer',
-          phone: d.phone || userPhone || '',
-          email: d.email || userEmail || '',
-          businessName: d.business_name || '',
-          businessType: d.business_type || 'Wholesaler',
-          businessLocation: d.business_location || '',
-          city: d.city || '',
-          district: d.district || '',
-          state: d.state || 'Karnataka',
-          pincode: d.pincode || '',
-          latitude: d.latitude ? Number(d.latitude) : undefined,
-          longitude: d.longitude ? Number(d.longitude) : undefined,
-          receivingAddress: d.receiving_address || '',
-          primaryReceivingMarket: d.primary_receiving_market || '',
-          secondaryReceivingMarket: d.secondary_receiving_market || '',
-          preferredDeliveryWindow: d.preferred_delivery_window || 'Early Morning (5 AM - 9 AM)',
-          preferredVegetables: d.preferred_vegetables ? d.preferred_vegetables.split(', ') : [],
-          preferredQuantity: d.preferred_quantity || '',
-          minimumOrderQuantity: d.minimum_order_quantity || '',
-          typicalPurchaseQuantity: d.typical_purchase_quantity || '',
-          buyingFrequency: d.buying_frequency || 'Daily',
-          preferredQuality: d.preferred_quality || 'Grade A & Premium',
-          preferredPriceRange: d.preferred_price_range || '',
-          preferredMarkets: d.preferred_markets ? d.preferred_markets.split(', ') : [],
-          preferredDeliveryDistance: d.preferred_delivery_distance || 'Within 100 km',
-          profileCompleted: Boolean(d.profile_completed),
-          completionPercentage: d.completion_percentage ?? (d.profile_completed ? 100 : 33)
-        };
-        setBuyerProfile(loaded);
-        localStorage.setItem('agrismart_buyer_profile', JSON.stringify(loaded));
-      } else if (userId) {
-        setBuyerProfile(prev => {
-          const fresh: BuyerProfileData = {
-            ...prev,
-            userId,
-            fullName: userName || prev.fullName,
-            email: userEmail || prev.email,
-            phone: userPhone || prev.phone,
-            profileCompleted: false,
-            completionPercentage: 33
+      // 2. Buyer Profile Hydration
+      if (buyerRes.status === 'fulfilled') {
+        if (buyerRes.value.data) {
+          const d = buyerRes.value.data;
+          const isComplete = Boolean(d.profile_completed);
+          const loaded: BuyerProfileData = {
+            id: d.id,
+            userId: d.user_id,
+            fullName: d.full_name || userName || 'Buyer',
+            phone: d.phone || userPhone || '',
+            email: d.email || userEmail || '',
+            businessName: d.business_name || '',
+            businessType: d.business_type || 'Wholesaler',
+            businessLocation: d.business_location || '',
+            city: d.city || '',
+            district: d.district || '',
+            state: d.state || 'Karnataka',
+            pincode: d.pincode || '',
+            latitude: d.latitude ? Number(d.latitude) : undefined,
+            longitude: d.longitude ? Number(d.longitude) : undefined,
+            receivingAddress: d.receiving_address || '',
+            primaryReceivingMarket: d.primary_receiving_market || '',
+            secondaryReceivingMarket: d.secondary_receiving_market || '',
+            preferredDeliveryWindow: d.preferred_delivery_window || 'Early Morning (5 AM - 9 AM)',
+            preferredVegetables: d.preferred_vegetables ? d.preferred_vegetables.split(', ') : [],
+            preferredQuantity: d.preferred_quantity || '',
+            minimumOrderQuantity: d.minimum_order_quantity || '',
+            typicalPurchaseQuantity: d.typical_purchase_quantity || '',
+            buyingFrequency: d.buying_frequency || 'Daily',
+            preferredQuality: d.preferred_quality || 'Grade A & Premium',
+            preferredPriceRange: d.preferred_price_range || '',
+            preferredMarkets: d.preferred_markets ? d.preferred_markets.split(', ') : [],
+            preferredDeliveryDistance: d.preferred_delivery_distance || 'Within 100 km',
+            profileCompleted: isComplete,
+            completionPercentage: d.completion_percentage ?? (isComplete ? 100 : 33)
           };
-          localStorage.setItem('agrismart_buyer_profile', JSON.stringify(fresh));
-          return fresh;
-        });
+          setBuyerProfile(loaded);
+          localStorage.setItem('agrismart_buyer_profile', JSON.stringify(loaded));
+        } else if (userId) {
+          // Clean initial profile for new user without existing DB row
+          setBuyerProfile(prev => {
+            const fresh: BuyerProfileData = {
+              ...prev,
+              userId,
+              fullName: userName || prev.fullName,
+              email: userEmail || prev.email,
+              phone: userPhone || prev.phone,
+              profileCompleted: false,
+              completionPercentage: 33
+            };
+            localStorage.setItem('agrismart_buyer_profile', JSON.stringify(fresh));
+            return fresh;
+          });
+        }
+      } else {
+        console.warn('Buyer profile load notice (network/fetch error):', buyerRes.reason);
       }
 
-      if (transpRes.status === 'fulfilled' && transpRes.value.data) {
-        const d = transpRes.value.data;
-        const loaded: TransporterProfileData = {
-          id: d.id,
-          userId: d.user_id,
-          fullName: d.full_name || userName || 'Transporter',
-          phone: d.phone || userPhone || '',
-          email: d.email || userEmail || '',
-          currentLocation: d.current_location || '',
-          latitude: d.latitude ? Number(d.latitude) : undefined,
-          longitude: d.longitude ? Number(d.longitude) : undefined,
-          vehicleType: d.vehicle_type || '4-Wheeler Tempo Reefer (Cold Chain)',
-          vehicleRegistrationNumber: d.vehicle_registration_number || '',
-          vehicleCapacity: d.vehicle_capacity || '',
-          vehicleModel: d.vehicle_model || '',
-          vehicleAge: d.vehicle_age || '1 - 3 Years',
-          operatingLocation: d.operating_location || '',
-          preferredPickupAreas: d.preferred_pickup_areas ? d.preferred_pickup_areas.split(', ') : [],
-          preferredDeliveryMarkets: d.preferred_delivery_markets ? d.preferred_delivery_markets.split(', ') : [],
-          availability: d.availability || 'Available Now (GPS Active)',
-          workingDays: d.working_days || 'All 7 Days',
-          preferredPickupTime: d.preferred_pickup_time || 'Morning & Evening Dispatches',
-          transportChargePerKm: d.transport_charge_per_km ? Number(d.transport_charge_per_km) : 22,
-          minimumTripCharge: d.minimum_trip_charge ? Number(d.minimum_trip_charge) : 1800,
-          additionalLoadingCharge: d.additional_loading_charge ? Number(d.additional_loading_charge) : 350,
-          profileCompleted: Boolean(d.profile_completed),
-          completionPercentage: d.completion_percentage ?? (d.profile_completed ? 100 : 25)
-        };
-        setTransporterProfile(loaded);
-        localStorage.setItem('agrismart_transporter_profile', JSON.stringify(loaded));
-      } else if (userId) {
-        setTransporterProfile(prev => {
-          const fresh: TransporterProfileData = {
-            ...prev,
-            userId,
-            fullName: userName || prev.fullName,
-            phone: userPhone || prev.phone,
-            email: userEmail || prev.email,
-            profileCompleted: false,
-            completionPercentage: 25
+      // 3. Transporter Profile Hydration
+      if (transpRes.status === 'fulfilled') {
+        if (transpRes.value.data) {
+          const d = transpRes.value.data;
+          const isComplete = Boolean(d.profile_completed);
+          const loaded: TransporterProfileData = {
+            id: d.id,
+            userId: d.user_id,
+            fullName: d.full_name || userName || 'Transporter',
+            phone: d.phone || userPhone || '',
+            email: d.email || userEmail || '',
+            currentLocation: d.current_location || '',
+            latitude: d.latitude ? Number(d.latitude) : undefined,
+            longitude: d.longitude ? Number(d.longitude) : undefined,
+            vehicleType: d.vehicle_type || '4-Wheeler Tempo Reefer (Cold Chain)',
+            vehicleRegistrationNumber: d.vehicle_registration_number || '',
+            vehicleCapacity: d.vehicle_capacity || '',
+            vehicleModel: d.vehicle_model || '',
+            vehicleAge: d.vehicle_age || '1 - 3 Years',
+            operatingLocation: d.operating_location || '',
+            preferredPickupAreas: d.preferred_pickup_areas ? d.preferred_pickup_areas.split(', ') : [],
+            preferredDeliveryMarkets: d.preferred_delivery_markets ? d.preferred_delivery_markets.split(', ') : [],
+            availability: d.availability || 'Available Now (GPS Active)',
+            workingDays: d.working_days || 'All 7 Days',
+            preferredPickupTime: d.preferred_pickup_time || 'Morning & Evening Dispatches',
+            transportChargePerKm: d.transport_charge_per_km ? Number(d.transport_charge_per_km) : 22,
+            minimumTripCharge: d.minimum_trip_charge ? Number(d.minimum_trip_charge) : 1800,
+            additionalLoadingCharge: d.additional_loading_charge ? Number(d.additional_loading_charge) : 350,
+            profileCompleted: isComplete,
+            completionPercentage: d.completion_percentage ?? (isComplete ? 100 : 25)
           };
-          localStorage.setItem('agrismart_transporter_profile', JSON.stringify(fresh));
-          return fresh;
-        });
+          setTransporterProfile(loaded);
+          localStorage.setItem('agrismart_transporter_profile', JSON.stringify(loaded));
+        } else if (userId) {
+          // Clean initial profile for new user without existing DB row
+          setTransporterProfile(prev => {
+            const fresh: TransporterProfileData = {
+              ...prev,
+              userId,
+              fullName: userName || prev.fullName,
+              phone: userPhone || prev.phone,
+              email: userEmail || prev.email,
+              profileCompleted: false,
+              completionPercentage: 25
+            };
+            localStorage.setItem('agrismart_transporter_profile', JSON.stringify(fresh));
+            return fresh;
+          });
+        }
+      } else {
+        console.warn('Transporter profile load notice (network/fetch error):', transpRes.reason);
       }
     } catch (err) {
       console.warn('Load role profiles notice:', err);
@@ -433,7 +453,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
-            .single();
+            .maybeSingle();
 
           if (profile?.role) {
             setCurrentRole(profile.role as UserRole);
@@ -461,7 +481,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
-            .single();
+            .maybeSingle();
 
           if (profile?.role) {
             setCurrentRole(profile.role as UserRole);
@@ -518,12 +538,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const saveFarmerProfile = async (data: Partial<FarmerProfileData>): Promise<boolean> => {
     const updated: FarmerProfileData = { ...farmerProfile, ...data };
-    setFarmerProfile(updated);
-    localStorage.setItem('agrismart_farmer_profile', JSON.stringify(updated));
 
     if (supabaseUser) {
       try {
-        await supabase.from('farmer_profiles').upsert({
+        const { error } = await supabase.from('farmer_profiles').upsert({
           user_id: supabaseUser.id,
           full_name: updated.fullName,
           phone: updated.phone,
@@ -552,22 +570,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           profile_completed: updated.profileCompleted,
           completion_percentage: updated.completionPercentage,
           updated_at: new Date().toISOString()
-        });
+        }, { onConflict: 'user_id' });
+
+        if (error) {
+          console.error('Farmer profile save error in Supabase:', error);
+          return false;
+        }
       } catch (err) {
-        console.warn('Farmer profile save notice:', err);
+        console.error('Farmer profile save exception:', err);
+        return false;
       }
     }
+
+    setFarmerProfile(updated);
+    localStorage.setItem('agrismart_farmer_profile', JSON.stringify(updated));
     return true;
   };
 
   const saveBuyerProfile = async (data: Partial<BuyerProfileData>): Promise<boolean> => {
     const updated: BuyerProfileData = { ...buyerProfile, ...data };
-    setBuyerProfile(updated);
-    localStorage.setItem('agrismart_buyer_profile', JSON.stringify(updated));
 
     if (supabaseUser) {
       try {
-        await supabase.from('buyer_profiles').upsert({
+        const { error } = await supabase.from('buyer_profiles').upsert({
           user_id: supabaseUser.id,
           full_name: updated.fullName,
           phone: updated.phone,
@@ -597,22 +622,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           profile_completed: updated.profileCompleted,
           completion_percentage: updated.completionPercentage,
           updated_at: new Date().toISOString()
-        });
+        }, { onConflict: 'user_id' });
+
+        if (error) {
+          console.error('Buyer profile save error in Supabase:', error);
+          return false;
+        }
       } catch (err) {
-        console.warn('Buyer profile save notice:', err);
+        console.error('Buyer profile save exception:', err);
+        return false;
       }
     }
+
+    setBuyerProfile(updated);
+    localStorage.setItem('agrismart_buyer_profile', JSON.stringify(updated));
     return true;
   };
 
   const saveTransporterProfile = async (data: Partial<TransporterProfileData>): Promise<boolean> => {
     const updated: TransporterProfileData = { ...transporterProfile, ...data };
-    setTransporterProfile(updated);
-    localStorage.setItem('agrismart_transporter_profile', JSON.stringify(updated));
 
     if (supabaseUser) {
       try {
-        await supabase.from('transporter_profiles').upsert({
+        const { error } = await supabase.from('transporter_profiles').upsert({
           user_id: supabaseUser.id,
           full_name: updated.fullName,
           phone: updated.phone,
@@ -637,18 +669,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           profile_completed: updated.profileCompleted,
           completion_percentage: updated.completionPercentage,
           updated_at: new Date().toISOString()
-        });
+        }, { onConflict: 'user_id' });
+
+        if (error) {
+          console.error('Transporter profile save error in Supabase:', error);
+          return false;
+        }
       } catch (err) {
-        console.warn('Transporter profile save notice:', err);
+        console.error('Transporter profile save exception:', err);
+        return false;
       }
     }
+
+    setTransporterProfile(updated);
+    localStorage.setItem('agrismart_transporter_profile', JSON.stringify(updated));
     return true;
   };
 
   const isProfileComplete = (role: UserRole): boolean => {
-    if (role === 'farmer') return Boolean(farmerProfile.profileCompleted);
-    if (role === 'buyer') return Boolean(buyerProfile.profileCompleted);
-    return Boolean(transporterProfile.profileCompleted);
+    if (role === 'farmer') return Boolean(farmerProfile?.profileCompleted);
+    if (role === 'buyer') return Boolean(buyerProfile?.profileCompleted);
+    if (role === 'transporter') return Boolean(transporterProfile?.profileCompleted);
+    return false;
   };
 
   // Sync to local storage
@@ -742,7 +784,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             currentUser.avatarUrl,
           role,
           updated_at: new Date().toISOString()
-        });
+        }, { onConflict: 'id' });
 
         if (error) {
           console.warn('Could not persist profile role to Supabase:', error);

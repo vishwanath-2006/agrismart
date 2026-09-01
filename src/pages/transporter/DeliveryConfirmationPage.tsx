@@ -6,7 +6,7 @@ import { stopOrderTracking } from '../../services/liveTrackingService';
 
 export const DeliveryConfirmationPage: React.FC = () => {
   const navigate = useNavigate();
-  const { activeOrder, orders, completeDelivery, currentRole } = useApp();
+  const { activeOrder, orders, completeDelivery, currentRole, isProfileComplete } = useApp();
   const order = activeOrder || (orders.length > 0 ? orders[0] : null);
 
   const [otp, setOtp] = useState('8492');
@@ -48,6 +48,11 @@ export const DeliveryConfirmationPage: React.FC = () => {
   const handleConfirmDelivery = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+
+    if (currentRole === 'transporter' && !isProfileComplete('transporter')) {
+      setErrorMessage('Please complete your transporter profile before confirming delivery.');
+      return;
+    }
 
     // Validate 4-digit OTP
     if (!otp || otp.trim().length !== 4) {

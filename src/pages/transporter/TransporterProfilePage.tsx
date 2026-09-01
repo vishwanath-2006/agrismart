@@ -70,8 +70,11 @@ export const TransporterProfilePage: React.FC = () => {
     }
   };
 
+  const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
+
   const handleSaveStep = async (nextStep?: number, markComplete: boolean = false) => {
     setIsSaving(true);
+    setSaveErrorMessage(null);
     const isComplete = markComplete || currentStep === totalSteps || formData.profileCompleted;
 
     const toSave: TransporterProfileData = {
@@ -90,11 +93,13 @@ export const TransporterProfilePage: React.FC = () => {
       if (isEditing) {
         setIsEditing(false);
       } else if (markComplete || currentStep === totalSteps) {
-        // Switch to completed profile summary
         setIsEditing(false);
+        navigate('/transporter/dashboard');
       } else if (nextStep) {
         setCurrentStep(nextStep);
       }
+    } else {
+      setSaveErrorMessage('Unable to save transporter profile to database. Please check your connection and try again.');
     }
   };
 

@@ -6,7 +6,7 @@ import { LiveMapPreview } from '../../components/common/LiveMapPreview';
 
 export const RouteOptimizationPage: React.FC = () => {
   const navigate = useNavigate();
-  const { activeOrder, startTrip, orders } = useApp();
+  const { activeOrder, startTrip, orders, isProfileComplete } = useApp();
 
   const order = activeOrder || orders[0];
 
@@ -29,6 +29,10 @@ export const RouteOptimizationPage: React.FC = () => {
   }
 
   const handleStartTrip = () => {
+    if (!isProfileComplete('transporter')) {
+      navigate('/transporter/profile');
+      return;
+    }
     startTrip(order.id);
     navigate('/transporter/live-tracking');
   };

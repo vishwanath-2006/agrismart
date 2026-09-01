@@ -6,7 +6,7 @@ import { UserRole } from '../../types';
 
 export const RoleSelectionPage: React.FC = () => {
   const navigate = useNavigate();
-  const { assignRole, currentRole, currentUser } = useApp();
+  const { assignRole, currentRole, currentUser, isProfileComplete } = useApp();
   const [selectedRole, setSelectedRole] = useState<UserRole>(currentRole || 'farmer');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -15,9 +15,14 @@ export const RoleSelectionPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       await assignRole(role);
-      if (role === 'farmer') navigate('/farmer/dashboard');
-      else if (role === 'buyer') navigate('/buyer/marketplace');
-      else navigate('/transporter/dashboard');
+      const isComplete = isProfileComplete(role);
+      if (role === 'farmer') {
+        navigate(isComplete ? '/farmer/dashboard' : '/farmer/profile');
+      } else if (role === 'buyer') {
+        navigate(isComplete ? '/buyer/marketplace' : '/buyer/profile');
+      } else {
+        navigate(isComplete ? '/transporter/dashboard' : '/transporter/profile');
+      }
     } catch (err) {
       console.error('Failed to assign role:', err);
     } finally {

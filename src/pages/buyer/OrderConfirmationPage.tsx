@@ -5,7 +5,7 @@ import { AppLayout } from '../../components/layout/AppLayout';
 
 export const OrderConfirmationPage: React.FC = () => {
   const navigate = useNavigate();
-  const { selectedProduce, selectedTransporter, createOrder, produceListings, transporters, currentNegotiation, buyerProfile, mandiPrices } = useApp();
+  const { selectedProduce, selectedTransporter, createOrder, produceListings, transporters, currentNegotiation, buyerProfile, mandiPrices, isProfileComplete } = useApp();
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'escrow' | 'netbanking'>('upi');
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -35,6 +35,11 @@ export const OrderConfirmationPage: React.FC = () => {
   const govtModalPrice = govtRefMandi ? govtRefMandi.modalPrice : null;
 
   const handlePayAndPlaceOrder = () => {
+    if (!isProfileComplete('buyer')) {
+      setErrorMessage('Please complete your Buyer Profile & Delivery Address before placing an order.');
+      return;
+    }
+
     if (!produce) {
       setErrorMessage('Please select a produce item from the marketplace.');
       return;
@@ -69,6 +74,25 @@ export const OrderConfirmationPage: React.FC = () => {
           <h2 className="text-title-md font-title-md font-bold text-on-surface">Confirm Order</h2>
           <p className="text-[13px] text-on-surface-variant">Review your order before payment</p>
         </div>
+
+        {/* Onboarding Incomplete Warning Banner */}
+        {!isProfileComplete('buyer') && (
+          <div className="p-4 bg-tertiary-fixed/20 border border-tertiary/30 rounded-2xl flex items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-tertiary text-[22px]">warning</span>
+              <div>
+                <p className="text-[13px] font-bold text-on-surface">Buyer Profile Incomplete</p>
+                <p className="text-[12px] text-on-surface-variant">Complete your business identity & delivery address to place orders.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/buyer/profile')}
+              className="px-3.5 py-1.5 bg-tertiary text-on-tertiary text-[12px] font-bold rounded-xl hover:bg-tertiary/90 transition-all shrink-0"
+            >
+              Complete Profile
+            </button>
+          </div>
+        )}
 
         {/* Error Alert */}
         {errorMessage && (
