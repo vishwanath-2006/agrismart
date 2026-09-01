@@ -135,25 +135,40 @@ export const MarketComparisonPage: React.FC = () => {
       alt: mkt.marketName,
       title: mkt.marketName,
       subtitle: `${mkt.city}, ${mkt.state || 'Karnataka'} • ${mkt.distanceKm} km`,
-      badge: mkt.id === bestMarketId ? 'BEST RETURN' : undefined,
+      badge: mkt.id === bestMarketId ? 'BEST RETURN' : `Net: ₹${mkt.estNetReturnPerKg.toFixed(2)}/kg`,
       tag: `Mandi: ₹${mkt.currentPricePerKg.toFixed(2)}/kg`,
-      price: `Net: ₹${mkt.estNetReturnPerKg.toFixed(2)}/kg`,
+      price: 'Click to view crops →',
       data: mkt
     }));
   }, [sortedMarkets, bestMarketId]);
 
   const cropCarouselItems: DepthCarouselItem[] = useMemo(() => {
-    return CROP_LIST_DATA.map(crop => ({
-      image: crop.img,
-      alt: crop.name,
-      title: crop.name,
-      subtitle: `${crop.variety} • ${crop.qty} kg load`,
-      badge: crop.name === selectedCropName ? 'SELECTED CROP' : undefined,
-      tag: `Asking: ${crop.estRate}`,
-      price: `${crop.qty} kg Harvest`,
-      data: crop
-    }));
-  }, [selectedCropName]);
+    const dist = selectedMarket?.distanceKm || 40;
+    return CROP_LIST_DATA.map(crop => {
+      const baseMandi = crop.name.includes('Bean')
+        ? 78
+        : crop.name.includes('Tomato')
+        ? 42
+        : crop.name.includes('Onion')
+        ? 60
+        : crop.name.includes('Potato')
+        ? 51
+        : 65;
+      const transportDeduction = Math.round(((dist * 10) / crop.qty) * 100) / 100;
+      const netEst = Math.round((baseMandi - transportDeduction) * 100) / 100;
+
+      return {
+        image: crop.img,
+        alt: crop.name,
+        title: crop.name,
+        subtitle: `${crop.variety} • ${crop.qty} kg load`,
+        badge: crop.name === selectedCropName ? 'SELECTED CROP' : undefined,
+        tag: `Mandi: ₹${baseMandi.toFixed(2)}/kg`,
+        price: `Net: ₹${netEst.toFixed(2)}/kg`,
+        data: crop
+      };
+    });
+  }, [selectedCropName, selectedMarket]);
 
   const handleSelectMarket = (mkt: MarketComparisonItem) => {
     setSelectedMarket(mkt);
@@ -292,15 +307,31 @@ export const MarketComparisonPage: React.FC = () => {
         {/* DepthCarousel 3D Stage from React Bits */}
         {!isLoading && !hasError && (
           <div className="w-full relative overflow-hidden rounded-3xl bg-surface-container-lowest border border-outline-variant/30 shadow-card py-5 my-2">
-            <div className="px-5 pb-2 flex items-center justify-between">
-              <span className="text-label-sm font-bold text-on-surface flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-primary text-[20px]">
-                  {viewMode === 'market' ? 'storefront' : 'eco'}
+            <div className="px-5 pb-2 flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                {viewMode === 'crop' && (
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('market')}
+                    className="flex items-center gap-1 text-primary hover:bg-primary-fixed/30 bg-primary/10 border border-primary/20 px-3 py-1 rounded-full text-[12px] font-bold transition-all active:scale-95 shadow-sm"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+                    <span>Back to Markets</span>
+                  </button>
+                )}
+                <span className="text-label-sm font-bold text-on-surface flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-primary text-[20px]">
+                    {viewMode === 'market' ? 'storefront' : 'eco'}
+                  </span>
+                  <span>
+                    {viewMode === 'market'
+                      ? '3D Market Corridors (Click card to view crops)'
+                      : `Available Crops at ${selectedMarket?.marketName || 'Selected Market'}`}
+                  </span>
                 </span>
-                <span>{viewMode === 'market' ? '3D Market Corridor Depth Carousel' : '3D Crop Inventory Depth Carousel'}</span>
-              </span>
+              </div>
               <span className="text-[11px] text-primary font-semibold bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-                Drag / Swipe to Rotate
+                {viewMode === 'market' ? 'Click Card to Drill Down' : 'Drag / Click to Select'}
               </span>
             </div>
 
