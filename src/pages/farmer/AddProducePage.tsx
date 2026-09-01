@@ -22,7 +22,7 @@ export const AddProducePage: React.FC = () => {
   const [isPublished, setIsPublished] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // Live Camera & Photo Upload State
+  // Live Camera & Photo Upload State (Unlimited Multi-Use Access)
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isAiScanning, setIsAiScanning] = useState(false);
@@ -30,7 +30,22 @@ export const AddProducePage: React.FC = () => {
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const setVideoRef = (el: HTMLVideoElement | null) => {
+    videoRef.current = el;
+    if (el && streamRef.current) {
+      el.srcObject = streamRef.current;
+      el.play().catch(console.warn);
+    }
+  };
+
   const startLiveCamera = async () => {
+    // Cleanly stop any existing stream first to avoid hardware locking
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => {
+        try { t.stop(); } catch {}
+      });
+      streamRef.current = null;
+    }
     setCameraError(null);
     setIsCameraOpen(true);
     try {
@@ -47,16 +62,23 @@ export const AddProducePage: React.FC = () => {
         videoRef.current.srcObject = stream;
         videoRef.current.play().catch(console.warn);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Camera access failed:', err);
-      setCameraError('Camera access unavailable or permission denied. Please allow camera or use photo upload.');
+      setCameraError(err?.message || 'Camera access unavailable. Please allow camera permissions in browser settings or use photo upload.');
     }
   };
 
   const stopLiveCamera = () => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current.getTracks().forEach(t => {
+        try { t.stop(); } catch {}
+      });
       streamRef.current = null;
+    }
+    if (videoRef.current) {
+      try {
+        videoRef.current.srcObject = null;
+      } catch {}
     }
     setIsCameraOpen(false);
     setCameraError(null);
@@ -65,7 +87,9 @@ export const AddProducePage: React.FC = () => {
   useEffect(() => {
     return () => {
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current.getTracks().forEach(t => {
+          try { t.stop(); } catch {}
+        });
       }
     };
   }, []);
@@ -83,6 +107,7 @@ export const AddProducePage: React.FC = () => {
       stopLiveCamera();
       setSelectedImage(dataUrl);
 
+      // Trigger AI quality scanning animation
       setIsAiScanning(true);
       setTimeout(() => {
         setIsAiScanning(false);
@@ -103,6 +128,7 @@ export const AddProducePage: React.FC = () => {
       }, 800);
     }
   };
+
 
   const presetCrops = [
     { label: 'Tomato', variety: 'Hybrid', category: 'Vegetables' as const, img: TOMATO_IMG },
@@ -360,14 +386,14 @@ export const AddProducePage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="mt-2 px-4 py-1.5 rounded-xl bg-white text-slate-900 text-xs font-bold shadow"
+                        className="mt-2 px-4 py-1.5 rounded-xl bg-white text-slate-900 text-xs font-bold shadow cursor-pointer"
                       >
                         Switch to File Upload
                       </button>
                     </div>
                   ) : (
                     <video
-                      ref={videoRef}
+                      ref={setVideoRef}
                       autoPlay
                       playsInline
                       muted
@@ -387,7 +413,7 @@ export const AddProducePage: React.FC = () => {
                     <button
                       type="button"
                       onClick={stopLiveCamera}
-                      className="px-3 py-1.5 rounded-xl bg-black/60 hover:bg-black/80 text-white text-[11px] font-semibold backdrop-blur-md transition-all flex items-center gap-1"
+                      className="px-3 py-1.5 rounded-xl bg-black/60 hover:bg-black/80 text-white text-[11px] font-semibold backdrop-blur-md transition-all flex items-center gap-1 cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-[14px]">close</span>
                       Cancel / Upload
@@ -396,7 +422,7 @@ export const AddProducePage: React.FC = () => {
                       <button
                         type="button"
                         onClick={captureLiveSnapshot}
-                        className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs shadow-lg transition-all flex items-center gap-1.5 active:scale-95"
+                        className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs shadow-lg transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
                       >
                         <span className="material-symbols-outlined text-[18px]">photo_camera</span>
                         Capture Snapshot
@@ -405,8 +431,12 @@ export const AddProducePage: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                /* Snapshot Preview */
-                <div className="relative w-full h-44 rounded-2xl overflow-hidden bg-surface-container-low border-2 border-dashed border-primary/30 flex items-center justify-center group shadow-inner">
+                /* Snapshot Preview (Interactive with Unlimited Retakes) */
+                <div
+                  onClick={startLiveCamera}
+                  className="relative w-full h-44 rounded-2xl overflow-hidden bg-surface-container-low border-2 border-dashed border-primary/30 flex items-center justify-center group shadow-inner cursor-pointer hover:border-primary transition-all"
+                  title="Click to Open Live Camera (Unlimited Retakes)"
+                >
                   <img
                     src={selectedImage}
                     alt={cropName}
@@ -422,22 +452,24 @@ export const AddProducePage: React.FC = () => {
                   )}
 
                   {/* Action Buttons Overlay */}
-                  <div className="absolute bottom-2 inset-x-2 flex items-center justify-end gap-1.5 flex-wrap">
+                  <div className="absolute bottom-2 right-2 flex items-center gap-1.5 flex-wrap z-10" onClick={e => e.stopPropagation()}>
                     <button
                       type="button"
                       onClick={startLiveCamera}
-                      className="bg-primary hover:bg-primary/90 text-on-primary px-3 py-1.5 rounded-xl shadow-md text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95"
+                      className="bg-primary hover:bg-primary/90 text-on-primary px-3.5 py-1.5 rounded-xl shadow-md text-[11px] font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                      title="Open Live Camera (Unlimited Retakes)"
                     >
-                      <span className="material-symbols-outlined text-[14px]">videocam</span>
-                      Open Live Camera
+                      <span className="material-symbols-outlined text-[14px]">photo_camera</span>
+                      <span>{selectedImage === TOMATO_IMG ? 'Open Live Camera' : 'Retake / Live Camera'}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="bg-surface/95 hover:bg-surface backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md border border-outline-variant/30 text-[11px] font-semibold text-on-surface flex items-center gap-1 transition-all active:scale-95"
+                      className="bg-surface/95 hover:bg-surface backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md border border-outline-variant/30 text-[11px] font-semibold text-on-surface flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+                      title="Upload from Device Gallery"
                     >
                       <span className="material-symbols-outlined text-[14px]">upload</span>
-                      Upload Photo
+                      <span>Upload Photo</span>
                     </button>
                   </div>
                 </div>
