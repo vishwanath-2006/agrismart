@@ -4,6 +4,7 @@ import { AppLayout } from '../../components/layout/AppLayout';
 import { useApp } from '../../context/AppContext';
 import { FarmerProfileData } from '../../types';
 import { FARMER_AVATAR } from '../../data/mockData';
+import { reverseGeocodeCoordinates } from '../../services/geocodingService';
 
 export const FarmerProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -17,13 +18,20 @@ export const FarmerProfilePage: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
+  
+  // Real GPS & Reverse Geocoding State
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'locating' | 'success' | 'error'>('idle');
+  const [locationMessage, setLocationMessage] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState<FarmerProfileData>(farmerProfile);
 
   useEffect(() => {
     setFormData(farmerProfile);
+    if (farmerProfile?.latitude && farmerProfile?.longitude) {
+      setLocationStatus('success');
+      setLocationMessage(`Location saved from device (${Number(farmerProfile.latitude).toFixed(4)}°, ${Number(farmerProfile.longitude).toFixed(4)}°)`);
+    }
   }, [farmerProfile]);
 
   const totalSteps = 4;
@@ -38,31 +46,65 @@ export const FarmerProfilePage: React.FC = () => {
   };
 
   const handleUseCurrentLocation = () => {
-    setIsLocating(true);
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setIsLocating(false);
-          setFormData(prev => ({
-            ...prev,
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            farmLocation: 'GPS Verified: Mysore Farm Gate 2',
-            village: prev.village || 'Nanjangud Rural',
-            district: prev.district || 'Mysore',
-            state: prev.state || 'Karnataka',
-            pincode: prev.pincode || '570001'
-          }));
-        },
-        (err) => {
-          console.warn('Geolocation notice:', err);
-          setIsLocating(false);
-        },
-        { enableHighAccuracy: true, timeout: 8000 }
-      );
-    } else {
-      setIsLocating(false);
+    if (!('geolocation' in navigator)) {
+      setLocationStatus('error');
+      setLocationMessage('Your browser does not support location services.');
+      return;
     }
+
+    setLocationStatus('locating');
+    setLocationMessage('Getting your current location...');
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+
+        // Call real reverse geocoding
+        const geoResult = await reverseGeocodeCoordinates(lat, lon);
+
+        setFormData(prev => {
+          const updatedVillage = geoResult?.village || prev.village || '';
+          const updatedDistrict = geoResult?.district || prev.district || '';
+          const updatedState = geoResult?.state || prev.state || 'Karnataka';
+          const updatedPincode = geoResult?.pincode || prev.pincode || '';
+          const updatedFarmLocation = geoResult?.displayName
+            ? `GPS: ${geoResult.displayName.split(',').slice(0, 3).join(', ')}`
+            : `GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+
+          return {
+            ...prev,
+            latitude: lat,
+            longitude: lon,
+            farmLocation: updatedFarmLocation,
+            village: updatedVillage,
+            district: updatedDistrict,
+            state: updatedState,
+            pincode: updatedPincode
+          };
+        });
+
+        setLocationStatus('success');
+        setLocationMessage(`Current location detected (${lat.toFixed(4)}°, ${lon.toFixed(4)}°)`);
+      },
+      (err) => {
+        setLocationStatus('error');
+        if (err.code === 1) {
+          setLocationMessage('Location permission was denied. Please allow location access in your browser and try again.');
+        } else if (err.code === 2) {
+          setLocationMessage('Unable to determine your location. Please check your device location services and try again.');
+        } else if (err.code === 3) {
+          setLocationMessage('Location request timed out. Please try again.');
+        } else {
+          setLocationMessage('Failed to acquire GPS location. Please check your connection and try again.');
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      }
+    );
   };
 
   const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
@@ -282,19 +324,34 @@ export const FarmerProfilePage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Farm Location Section */}
             <div className="bg-surface-container rounded-2xl p-5 shadow-sm border border-outline-variant/20 flex flex-col gap-3">
-              <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">location_on</span>
-                Farm Location Details
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-title-md font-bold text-on-surface flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">location_on</span>
+                  Farm Location Details
+                </h3>
+                {formData.latitude && formData.longitude && (
+                  <span className="text-[11px] font-bold text-primary bg-primary-fixed/30 px-2 py-0.5 rounded-md border border-primary/20">
+                    GPS Verified
+                  </span>
+                )}
+              </div>
 
               <div className="space-y-2 text-body-md text-on-surface">
+                {formData.latitude && formData.longitude && (
+                  <div className="flex justify-between py-1 border-b border-outline-variant/20">
+                    <span className="text-on-surface-variant text-[13px]">GPS Coordinates</span>
+                    <span className="font-semibold text-right text-primary text-[12px] font-mono">
+                      {Number(formData.latitude).toFixed(4)}°, {Number(formData.longitude).toFixed(4)}°
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between py-1 border-b border-outline-variant/20">
                   <span className="text-on-surface-variant text-[13px]">Village / Town</span>
-                  <span className="font-semibold text-right">{formData.village || 'Nanjangud Rural'}</span>
+                  <span className="font-semibold text-right">{formData.village || 'Not set'}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-outline-variant/20">
                   <span className="text-on-surface-variant text-[13px]">District</span>
-                  <span className="font-semibold text-right">{formData.district || 'Mysore'}</span>
+                  <span className="font-semibold text-right">{formData.district || 'Not set'}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-outline-variant/20">
                   <span className="text-on-surface-variant text-[13px]">State</span>
@@ -302,7 +359,7 @@ export const FarmerProfilePage: React.FC = () => {
                 </div>
                 <div className="flex justify-between py-1">
                   <span className="text-on-surface-variant text-[13px]">Pincode</span>
-                  <span className="font-semibold text-right">{formData.pincode || '570001'}</span>
+                  <span className="font-semibold text-right">{formData.pincode || 'Not set'}</span>
                 </div>
               </div>
             </div>
@@ -442,17 +499,25 @@ export const FarmerProfilePage: React.FC = () => {
         {saveSuccessNotice && (
           <div className="mb-4 p-3 bg-primary-fixed/30 text-primary rounded-xl border border-primary/20 text-[13px] flex items-center gap-2 animate-in fade-in">
             <span className="material-symbols-outlined text-[18px]">check_circle</span>
-            <span>Profile details saved to Supabase successfully.</span>
+            <span>Farmer details saved to Supabase successfully.</span>
           </div>
         )}
 
-        {/* STEP 1: PERSONAL & LOCATION */}
+        {/* Save Error Alert */}
+        {saveErrorMessage && (
+          <div className="mb-4 p-3 bg-error-container/40 border border-error/30 text-on-error-container rounded-xl flex items-center gap-2 text-[13px] font-semibold animate-in fade-in">
+            <span className="material-symbols-outlined text-[18px] text-error">error</span>
+            <span>{saveErrorMessage}</span>
+          </div>
+        )}
+
+        {/* STEP 1: Personal Details & Farm Location */}
         {currentStep === 1 && (
           <div className="flex flex-col gap-5">
             <div className="bg-surface-container rounded-2xl p-5 shadow-sm flex flex-col gap-4">
               <h2 className="font-title-md text-on-surface font-bold flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">person</span>
-                Personal Details
+                Personal Information
               </h2>
 
               <div className="flex flex-col gap-1.5">
@@ -484,25 +549,70 @@ export const FarmerProfilePage: React.FC = () => {
             </div>
 
             <div className="bg-surface-container rounded-2xl p-5 shadow-sm flex flex-col gap-4">
-              <h2 className="font-title-md text-on-surface font-bold flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">location_on</span>
-                Farm Location
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="font-title-md text-on-surface font-bold flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">location_on</span>
+                  Farm Location
+                </h2>
+                {formData.latitude && formData.longitude && (
+                  <span className="text-[11px] font-bold text-primary bg-primary-fixed/30 px-2 py-0.5 rounded-md border border-primary/20">
+                    GPS Coordinates Active
+                  </span>
+                )}
+              </div>
 
               <div className="relative w-full h-44 rounded-xl overflow-hidden shadow-inner border border-outline-variant/30 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=80')" }}>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
                 <button
                   type="button"
                   onClick={handleUseCurrentLocation}
-                  disabled={isLocating}
-                  className="absolute bottom-3 left-1/2 -translate-x-1/2 h-10 px-4 bg-primary text-on-primary font-label-sm font-semibold rounded-full flex items-center gap-2 shadow-md hover:bg-primary-container transition-all z-10"
+                  disabled={locationStatus === 'locating'}
+                  className="absolute bottom-3 left-1/2 -translate-x-1/2 h-10 px-4 bg-primary text-on-primary font-label-sm font-semibold rounded-full flex items-center gap-2 shadow-md hover:bg-primary-container transition-all z-10 disabled:opacity-75 disabled:cursor-not-allowed"
                 >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {isLocating ? 'refresh' : 'my_location'}
+                  <span className={`material-symbols-outlined text-[18px] ${locationStatus === 'locating' ? 'animate-spin' : ''}`}>
+                    {locationStatus === 'locating' ? 'refresh' : 'my_location'}
                   </span>
-                  {isLocating ? 'Detecting GPS Location...' : 'Use current location'}
+                  {locationStatus === 'locating' ? 'Getting your current location...' : 'Use current location'}
                 </button>
               </div>
+
+              {/* Location Permission / Status Feedback Banner */}
+              {locationStatus === 'locating' && (
+                <div className="p-3 bg-primary-fixed/20 border border-primary/30 rounded-xl flex items-center gap-2.5 text-[13px] text-on-surface animate-pulse">
+                  <span className="material-symbols-outlined text-primary text-[18px] animate-spin">refresh</span>
+                  <span className="font-medium">{locationMessage}</span>
+                </div>
+              )}
+
+              {locationStatus === 'success' && (
+                <div className="p-3 bg-primary-fixed/30 border border-primary/40 rounded-xl flex items-center justify-between gap-2 text-[13px] text-on-surface">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary text-[18px]">check_circle</span>
+                    <span className="font-semibold">{locationMessage}</span>
+                  </div>
+                  {formData.latitude && formData.longitude && (
+                    <span className="text-[11px] font-mono text-on-surface-variant font-bold">
+                      {Number(formData.latitude).toFixed(4)}°, {Number(formData.longitude).toFixed(4)}°
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {locationStatus === 'error' && (
+                <div className="p-3 bg-error-container/30 border border-error/30 rounded-xl flex items-center justify-between gap-3 text-[13px] text-on-error-container">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-error text-[18px]">error</span>
+                    <span>{locationMessage}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleUseCurrentLocation}
+                    className="px-3 py-1 bg-error text-on-error text-[11px] font-bold rounded-lg hover:bg-error/90 transition-all shrink-0"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
@@ -527,25 +637,19 @@ export const FarmerProfilePage: React.FC = () => {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="font-label-sm text-on-surface-variant font-medium">State</label>
-                  <select
-                    className="w-full h-touch-target-min bg-surface rounded-xl px-3 font-body-md text-on-surface border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  <input
+                    className="w-full h-touch-target-min bg-surface rounded-xl px-4 font-body-md text-on-surface border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    placeholder="e.g. Karnataka"
+                    type="text"
                     value={formData.state}
                     onChange={e => setFormData({ ...formData, state: e.target.value })}
-                  >
-                    <option value="Karnataka">Karnataka</option>
-                    <option value="Maharashtra">Maharashtra</option>
-                    <option value="Punjab">Punjab</option>
-                    <option value="Haryana">Haryana</option>
-                    <option value="Tamil Nadu">Tamil Nadu</option>
-                    <option value="Andhra Pradesh">Andhra Pradesh</option>
-                    <option value="Gujarat">Gujarat</option>
-                  </select>
+                  />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="font-label-sm text-on-surface-variant font-medium">Pincode</label>
                   <input
                     className="w-full h-touch-target-min bg-surface rounded-xl px-4 font-body-md text-on-surface border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    placeholder="570001"
+                    placeholder="e.g. 570001"
                     type="text"
                     value={formData.pincode}
                     onChange={e => setFormData({ ...formData, pincode: e.target.value })}
