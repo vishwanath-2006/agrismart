@@ -60,9 +60,9 @@ export const DesktopSidebar: React.FC = () => {
     <aside className="hidden md:flex flex-col w-[280px] shrink-0 min-h-screen bg-surface-container-lowest border-r border-outline-variant/30 p-6 sticky top-0 h-screen overflow-y-auto">
       {/* Brand Header */}
       <div className="flex items-center gap-3 pb-6 border-b border-outline-variant/20">
-        <img alt="AgriSmart AI" className="h-9 w-auto object-contain" src={LOGO_URL} />
+        <img alt="AgriSmart Logo" className="h-11 w-11 object-contain rounded-full shadow-sm" src={LOGO_URL} />
         <div>
-          <h2 className="font-title-md text-title-md text-primary font-bold tracking-tight">AgriSmart AI</h2>
+          <h2 className="font-title-md text-title-md text-primary font-bold tracking-tight">AgriSmart</h2>
           <p className="text-[12px] font-medium text-on-surface-variant">Marketplace & Logistics</p>
         </div>
       </div>

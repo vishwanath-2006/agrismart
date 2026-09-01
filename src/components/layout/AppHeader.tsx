@@ -31,7 +31,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       case 'transporter':
         return 'Transporter Dashboard';
       default:
-        return 'AgriSmart AI';
+        return 'AgriSmart';
     }
   };
 
@@ -71,8 +71,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             </button>
           ) : (
             <img
-              alt="AgriSmart AI Logo"
-              className="h-8 w-auto object-contain cursor-pointer"
+              alt="AgriSmart Logo"
+              className="h-10 w-10 object-contain cursor-pointer rounded-full shadow-sm"
               src={LOGO_URL}
               onClick={() => {
                 if (currentRole === 'farmer') navigate('/farmer/dashboard');

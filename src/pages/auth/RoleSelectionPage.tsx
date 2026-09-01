@@ -34,9 +34,9 @@ export const RoleSelectionPage: React.FC = () => {
       {/* Top Header Bar */}
       <header className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.04)] border-b border-outline-variant/20">
         <div className="max-w-4xl mx-auto h-16 px-margin-mobile md:px-margin-desktop flex items-center justify-between">
-          <div className="flex items-center gap-unit">
-            <img alt="AgriSmart AI" className="h-8 w-auto object-contain" src={LOGO_URL} />
-            <span className="font-title-md text-title-md text-primary font-bold">AgriSmart</span>
+          <div className="flex items-center gap-2.5">
+            <img alt="AgriSmart Logo" className="h-10 w-10 object-contain rounded-full shadow-sm" src={LOGO_URL} />
+            <span className="font-title-md text-title-md text-primary font-bold tracking-tight">AgriSmart</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-[12px] font-semibold text-primary bg-primary-fixed/30 px-3 py-1 rounded-full uppercase tracking-wider">

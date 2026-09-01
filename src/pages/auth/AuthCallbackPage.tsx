@@ -105,7 +105,7 @@ export const AuthCallbackPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 text-center">
       <div className="w-full max-w-sm bg-surface-container-lowest p-8 rounded-3xl border border-outline-variant/30 shadow-elevated flex flex-col items-center gap-4 animate-in fade-in zoom-in-95">
-        <img alt="AgriSmart AI" className="h-12 w-auto object-contain mb-1" src={LOGO_URL} />
+        <img alt="AgriSmart Logo" className="h-16 w-16 object-contain mb-1 rounded-full shadow-sm" src={LOGO_URL} />
         <div className="w-10 h-10 border-3 border-primary/20 border-t-primary rounded-full animate-spin mt-2" />
         <h2 className="text-title-md font-title-md font-bold text-on-surface mt-2">
           Authenticating with Google...

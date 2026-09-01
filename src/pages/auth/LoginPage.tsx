@@ -57,9 +57,9 @@ export const LoginPage: React.FC = () => {
     <div className="min-h-screen bg-surface flex flex-col justify-start">
       {/* Top Header Bar */}
       <div className="h-16 px-margin-mobile flex items-center justify-between bg-surface/90 backdrop-blur-xl border-b border-outline-variant/20 sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <img alt="AgriSmart AI Logo" className="h-8 w-auto object-contain" src={LOGO_URL} />
-          <span className="font-title-md text-title-md text-primary font-bold">AgriSmart AI</span>
+        <div className="flex items-center gap-2.5">
+          <img alt="AgriSmart Logo" className="h-10 w-10 object-contain rounded-full shadow-sm" src={LOGO_URL} />
+          <span className="font-title-md text-title-md text-primary font-bold tracking-tight">AgriSmart</span>
         </div>
         <span className="text-[12px] font-semibold text-primary bg-primary-fixed/30 px-3 py-1 rounded-full uppercase tracking-wider">
           Marketplace
