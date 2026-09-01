@@ -5,6 +5,7 @@ import { AppLayout } from '../../components/layout/AppLayout';
 import { TOMATO_IMG } from '../../data/mockData';
 import { MarketComparisonItem } from '../../types';
 import { fetchMarketComparisonsFromSupabase } from '../../services/mandiPriceService';
+import DepthCarousel, { DepthCarouselItem } from '../../components/common/DepthCarousel';
 
 export const MarketComparisonPage: React.FC = () => {
   const navigate = useNavigate();
@@ -105,11 +106,54 @@ export const MarketComparisonPage: React.FC = () => {
     return list.sort((a, b) => b.estNetReturnPerKg - a.estNetReturnPerKg);
   }, [filteredMarkets]);
 
+  const MARKET_IMAGES = [
+    'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1516253593875-bd7ba052fbc5?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1506484381205-f7945653044d?auto=format&fit=crop&w=800&q=80'
+  ];
+
+  const CROP_LIST_DATA = [
+    { name: 'Beans', qty: 600, img: 'https://images.unsplash.com/photo-1551893665-f843f600794e?auto=format&fit=crop&w=800&q=80', estRate: '₹40.00/kg', variety: 'Local Fresh Grade A' },
+    { name: 'Tomato (Hybrid)', qty: 500, img: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=800&q=80', estRate: '₹30.00/kg', variety: 'Abhinav 3140' },
+    { name: 'Red Onion', qty: 1200, img: 'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?auto=format&fit=crop&w=800&q=80', estRate: '₹22.00/kg', variety: 'Nashik Red 55' },
+    { name: 'Potato Jyoti', qty: 800, img: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=800&q=80', estRate: '₹18.00/kg', variety: 'Kufri Jyoti Premium' },
+    { name: 'Green Chilli', qty: 300, img: 'https://images.unsplash.com/photo-1588252303782-cb80119abd6d?auto=format&fit=crop&w=800&q=80', estRate: '₹45.00/kg', variety: 'G4 Hot' },
+    { name: 'Cabbage', qty: 1000, img: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?auto=format&fit=crop&w=800&q=80', estRate: '₹15.00/kg', variety: 'Golden Acre' }
+  ];
+
   const bestMarketId = useMemo(() => {
     if (markets.length === 0) return null;
     const top = [...markets].sort((a, b) => b.estNetReturnPerKg - a.estNetReturnPerKg)[0];
     return top?.id || null;
   }, [markets]);
+
+  const marketCarouselItems: DepthCarouselItem[] = useMemo(() => {
+    return sortedMarkets.map((mkt, idx) => ({
+      image: MARKET_IMAGES[idx % MARKET_IMAGES.length],
+      alt: mkt.marketName,
+      title: mkt.marketName,
+      subtitle: `${mkt.city}, ${mkt.state || 'Karnataka'} • ${mkt.distanceKm} km`,
+      badge: mkt.id === bestMarketId ? 'BEST RETURN' : undefined,
+      tag: `Mandi: ₹${mkt.currentPricePerKg.toFixed(2)}/kg`,
+      price: `Net: ₹${mkt.estNetReturnPerKg.toFixed(2)}/kg`,
+      data: mkt
+    }));
+  }, [sortedMarkets, bestMarketId]);
+
+  const cropCarouselItems: DepthCarouselItem[] = useMemo(() => {
+    return CROP_LIST_DATA.map(crop => ({
+      image: crop.img,
+      alt: crop.name,
+      title: crop.name,
+      subtitle: `${crop.variety} • ${crop.qty} kg load`,
+      badge: crop.name === selectedCropName ? 'SELECTED CROP' : undefined,
+      tag: `Asking: ${crop.estRate}`,
+      price: `${crop.qty} kg Harvest`,
+      data: crop
+    }));
+  }, [selectedCropName]);
 
   const handleSelectMarket = (mkt: MarketComparisonItem) => {
     setSelectedMarket(mkt);
@@ -244,6 +288,58 @@ export const MarketComparisonPage: React.FC = () => {
             </button>
           )}
         </div>
+
+        {/* DepthCarousel 3D Stage from React Bits */}
+        {!isLoading && !hasError && (
+          <div className="w-full relative overflow-hidden rounded-3xl bg-surface-container-lowest border border-outline-variant/30 shadow-card py-5 my-2">
+            <div className="px-5 pb-2 flex items-center justify-between">
+              <span className="text-label-sm font-bold text-on-surface flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-primary text-[20px]">
+                  {viewMode === 'market' ? 'storefront' : 'eco'}
+                </span>
+                <span>{viewMode === 'market' ? '3D Market Corridor Depth Carousel' : '3D Crop Inventory Depth Carousel'}</span>
+              </span>
+              <span className="text-[11px] text-primary font-semibold bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                Drag / Swipe to Rotate
+              </span>
+            </div>
+
+            <div style={{ height: '400px', position: 'relative' }}>
+              <DepthCarousel
+                items={viewMode === 'market' ? marketCarouselItems : cropCarouselItems}
+                cardWidth={280}
+                cardHeight={350}
+                radius={20}
+                depth={200}
+                spread={85}
+                tilt={20}
+                tiltDirection="right"
+                perspective={1300}
+                visibleCards={4}
+                falloff={0.2}
+                blur={4}
+                autoplay={false}
+                loop={true}
+                showControls={true}
+                showIndicators={true}
+                onChange={(idx, item) => {
+                  if (viewMode === 'market' && item?.data) {
+                    setSelectedMarket(item.data);
+                  } else if (viewMode === 'crop' && item?.data) {
+                    handleCropChange(item.data.name);
+                  }
+                }}
+                onItemClick={(idx, item) => {
+                  if (viewMode === 'market' && item?.data) {
+                    handleSelectMarket(item.data);
+                  } else if (viewMode === 'crop' && item?.data) {
+                    handleCropChange(item.data.name);
+                  }
+                }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Loading State */}
         {isLoading && (
