@@ -51,6 +51,12 @@ export const DeliveryConfirmationPage: React.FC = () => {
 
     if (currentRole === 'transporter' && !isProfileComplete('transporter')) {
       setErrorMessage('Please complete your transporter profile before confirming delivery.');
+      navigate('/transporter/profile', {
+        state: {
+          returnTo: '/transporter/delivery-confirmation',
+          actionNotice: 'Complete your transporter fleet profile before confirming shipment deliveries.'
+        }
+      });
       return;
     }
 

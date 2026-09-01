@@ -19,11 +19,16 @@ export const TransporterDashboardPage: React.FC = () => {
   );
 
   const handleAcceptLoad = (order: OrderItem) => {
+    setActiveOrder(order);
     if (!isProfileComplete('transporter')) {
-      navigate('/transporter/profile');
+      navigate('/transporter/profile', {
+        state: {
+          returnTo: '/transporter/route-optimization',
+          actionNotice: 'Complete your fleet registration & tariff profile to accept and dispatch delivery loads.'
+        }
+      });
       return;
     }
-    setActiveOrder(order);
     acceptTransportJob(order.id);
     navigate('/transporter/route-optimization');
   };
@@ -78,7 +83,12 @@ export const TransporterDashboardPage: React.FC = () => {
         {/* Fleet Profile Completion Banner if not 100% */}
         {transporterProfile && transporterProfile.completionPercentage < 100 && (
           <div
-            onClick={() => navigate('/transporter/profile')}
+            onClick={() => navigate('/transporter/profile', {
+              state: {
+                returnTo: '/transporter/dashboard',
+                actionNotice: 'Complete your fleet registration & tariff profile to accept delivery loads.'
+              }
+            })}
             className="p-3.5 bg-tertiary-fixed/20 border border-tertiary/30 rounded-2xl flex items-center justify-between gap-3 cursor-pointer hover:bg-tertiary-fixed/30 transition-all shadow-sm"
           >
             <div className="flex items-center gap-3">

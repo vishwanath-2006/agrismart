@@ -6,15 +6,13 @@ import { UserRole } from '../../types';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRole?: UserRole;
-  requireOnboarding?: boolean;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
-  allowedRole,
-  requireOnboarding = true
+  allowedRole
 }) => {
-  const { currentRole, isAuthLoading, isProfileLoading, isProfileComplete, supabaseUser } = useApp();
+  const { currentRole, isAuthLoading, isProfileLoading, supabaseUser } = useApp();
 
   // 1. Loading state during auth and profile hydration (prevents race conditions)
   if (isAuthLoading || isProfileLoading) {
@@ -38,28 +36,18 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // 4. Role mismatch -> redirect user to their own role domain
   if (allowedRole && currentRole !== allowedRole) {
-    const isSelfComplete = isProfileComplete(currentRole);
     if (currentRole === 'farmer') {
-      return <Navigate to={isSelfComplete ? '/farmer/dashboard' : '/farmer/profile'} replace />;
+      return <Navigate to="/farmer/dashboard" replace />;
     }
     if (currentRole === 'buyer') {
-      return <Navigate to={isSelfComplete ? '/buyer/marketplace' : '/buyer/profile'} replace />;
+      return <Navigate to="/buyer/marketplace" replace />;
     }
     if (currentRole === 'transporter') {
-      return <Navigate to={isSelfComplete ? '/transporter/dashboard' : '/transporter/profile'} replace />;
+      return <Navigate to="/transporter/dashboard" replace />;
     }
     return <Navigate to="/select-role" replace />;
   }
 
-  // 5. Onboarding requirement check
-  const isOnboarded = isProfileComplete(currentRole);
-  if (requireOnboarding && !isOnboarded) {
-    // Incomplete user attempting to access protected business routes -> redirect to role onboarding wizard
-    if (currentRole === 'farmer') return <Navigate to="/farmer/profile" replace />;
-    if (currentRole === 'buyer') return <Navigate to="/buyer/profile" replace />;
-    if (currentRole === 'transporter') return <Navigate to="/transporter/profile" replace />;
-  }
-
-  // 6. Authorized and onboarded (or on profile wizard page)
+  // 5. Authorized for this role area -> Render component
   return <>{children}</>;
 };

@@ -15,13 +15,12 @@ export const RoleSelectionPage: React.FC = () => {
     setIsSubmitting(true);
     try {
       await assignRole(role);
-      const isComplete = isProfileComplete(role);
       if (role === 'farmer') {
-        navigate(isComplete ? '/farmer/dashboard' : '/farmer/profile');
+        navigate('/farmer/dashboard');
       } else if (role === 'buyer') {
-        navigate(isComplete ? '/buyer/marketplace' : '/buyer/profile');
+        navigate('/buyer/marketplace');
       } else {
-        navigate(isComplete ? '/transporter/dashboard' : '/transporter/profile');
+        navigate('/transporter/dashboard');
       }
     } catch (err) {
       console.error('Failed to assign role:', err);

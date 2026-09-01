@@ -37,6 +37,12 @@ export const OrderConfirmationPage: React.FC = () => {
   const handlePayAndPlaceOrder = () => {
     if (!isProfileComplete('buyer')) {
       setErrorMessage('Please complete your Buyer Profile & Delivery Address before placing an order.');
+      navigate('/buyer/profile', {
+        state: {
+          returnTo: '/buyer/order-confirmation',
+          actionNotice: 'Complete your business identity & receiving address to place this order.'
+        }
+      });
       return;
     }
 
@@ -81,12 +87,17 @@ export const OrderConfirmationPage: React.FC = () => {
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-tertiary text-[22px]">warning</span>
               <div>
-                <p className="text-[13px] font-bold text-on-surface">Buyer Profile Incomplete</p>
+                <p className="text-[13px] font-bold text-on-surface">Buyer Profile Required</p>
                 <p className="text-[12px] text-on-surface-variant">Complete your business identity & delivery address to place orders.</p>
               </div>
             </div>
             <button
-              onClick={() => navigate('/buyer/profile')}
+              onClick={() => navigate('/buyer/profile', {
+                state: {
+                  returnTo: '/buyer/order-confirmation',
+                  actionNotice: 'Complete your business identity & receiving address to place this order.'
+                }
+              })}
               className="px-3.5 py-1.5 bg-tertiary text-on-tertiary text-[12px] font-bold rounded-xl hover:bg-tertiary/90 transition-all shrink-0"
             >
               Complete Profile

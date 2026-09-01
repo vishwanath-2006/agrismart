@@ -38,7 +38,7 @@ const PageLoadingFallback: React.FC = () => (
 );
 
 const RootRedirect: React.FC = () => {
-  const { currentRole, isAuthLoading, isProfileLoading, isProfileComplete, supabaseUser } = useApp();
+  const { currentRole, isAuthLoading, isProfileLoading, supabaseUser } = useApp();
 
   if (isAuthLoading || isProfileLoading) {
     return <PageLoadingFallback />;
@@ -52,16 +52,14 @@ const RootRedirect: React.FC = () => {
     return <Navigate to="/select-role" replace />;
   }
 
-  const isComplete = isProfileComplete(currentRole);
-
   if (currentRole === 'farmer') {
-    return <Navigate to={isComplete ? "/farmer/dashboard" : "/farmer/profile"} replace />;
+    return <Navigate to="/farmer/dashboard" replace />;
   }
   if (currentRole === 'buyer') {
-    return <Navigate to={isComplete ? "/buyer/marketplace" : "/buyer/profile"} replace />;
+    return <Navigate to="/buyer/marketplace" replace />;
   }
   if (currentRole === 'transporter') {
-    return <Navigate to={isComplete ? "/transporter/dashboard" : "/transporter/profile"} replace />;
+    return <Navigate to="/transporter/dashboard" replace />;
   }
   return <Navigate to="/login" replace />;
 };
@@ -78,7 +76,7 @@ export const App: React.FC = () => {
             <Route
               path="/select-role"
               element={
-                <ProtectedRoute requireOnboarding={false}>
+                <ProtectedRoute>
                   <RoleSelectionPage />
                 </ProtectedRoute>
               }
@@ -88,7 +86,7 @@ export const App: React.FC = () => {
             <Route
               path="/farmer/dashboard"
               element={
-                <ProtectedRoute allowedRole="farmer" requireOnboarding={true}>
+                <ProtectedRoute allowedRole="farmer">
                   <FarmerDashboardPage />
                 </ProtectedRoute>
               }
@@ -96,7 +94,7 @@ export const App: React.FC = () => {
             <Route
               path="/farmer/market-comparison"
               element={
-                <ProtectedRoute allowedRole="farmer" requireOnboarding={true}>
+                <ProtectedRoute allowedRole="farmer">
                   <MarketComparisonPage />
                 </ProtectedRoute>
               }
@@ -104,7 +102,7 @@ export const App: React.FC = () => {
             <Route
               path="/farmer/market-prices"
               element={
-                <ProtectedRoute allowedRole="farmer" requireOnboarding={true}>
+                <ProtectedRoute allowedRole="farmer">
                   <MarketPricesPage />
                 </ProtectedRoute>
               }
@@ -112,7 +110,7 @@ export const App: React.FC = () => {
             <Route
               path="/farmer/price-history"
               element={
-                <ProtectedRoute allowedRole="farmer" requireOnboarding={true}>
+                <ProtectedRoute allowedRole="farmer">
                   <PriceHistoryPage />
                 </ProtectedRoute>
               }
@@ -120,7 +118,7 @@ export const App: React.FC = () => {
             <Route
               path="/farmer/add-produce"
               element={
-                <ProtectedRoute allowedRole="farmer" requireOnboarding={true}>
+                <ProtectedRoute allowedRole="farmer">
                   <AddProducePage />
                 </ProtectedRoute>
               }
@@ -128,7 +126,7 @@ export const App: React.FC = () => {
             <Route
               path="/farmer/live-tracking"
               element={
-                <ProtectedRoute allowedRole="farmer" requireOnboarding={true}>
+                <ProtectedRoute allowedRole="farmer">
                   <LiveTrackingPage />
                 </ProtectedRoute>
               }
@@ -136,7 +134,7 @@ export const App: React.FC = () => {
             <Route
               path="/farmer/profile"
               element={
-                <ProtectedRoute allowedRole="farmer" requireOnboarding={false}>
+                <ProtectedRoute allowedRole="farmer">
                   <FarmerProfilePage />
                 </ProtectedRoute>
               }
@@ -146,7 +144,7 @@ export const App: React.FC = () => {
             <Route
               path="/buyer/marketplace"
               element={
-                <ProtectedRoute allowedRole="buyer" requireOnboarding={true}>
+                <ProtectedRoute allowedRole="buyer">
                   <BuyerMarketplacePage />
                 </ProtectedRoute>
               }
@@ -154,7 +152,7 @@ export const App: React.FC = () => {
             <Route
               path="/buyer/negotiation"
               element={
-                <ProtectedRoute allowedRole="buyer" requireOnboarding={true}>
+                <ProtectedRoute allowedRole="buyer">
                   <PriceNegotiationPage />
                 </ProtectedRoute>
               }
@@ -162,7 +160,7 @@ export const App: React.FC = () => {
             <Route
               path="/buyer/transporter-matching"
               element={
-                <ProtectedRoute allowedRole="buyer" requireOnboarding={true}>
+                <ProtectedRoute allowedRole="buyer">
                   <TransporterMatchingPage />
                 </ProtectedRoute>
               }
@@ -170,7 +168,7 @@ export const App: React.FC = () => {
             <Route
               path="/buyer/order-confirmation"
               element={
-                <ProtectedRoute allowedRole="buyer" requireOnboarding={true}>
+                <ProtectedRoute allowedRole="buyer">
                   <OrderConfirmationPage />
                 </ProtectedRoute>
               }
@@ -178,7 +176,7 @@ export const App: React.FC = () => {
             <Route
               path="/buyer/live-tracking"
               element={
-                <ProtectedRoute allowedRole="buyer" requireOnboarding={true}>
+                <ProtectedRoute allowedRole="buyer">
                   <LiveTrackingPage />
                 </ProtectedRoute>
               }
@@ -186,7 +184,7 @@ export const App: React.FC = () => {
             <Route
               path="/buyer/profile"
               element={
-                <ProtectedRoute allowedRole="buyer" requireOnboarding={false}>
+                <ProtectedRoute allowedRole="buyer">
                   <BuyerProfilePage />
                 </ProtectedRoute>
               }
@@ -196,7 +194,7 @@ export const App: React.FC = () => {
             <Route
               path="/transporter/dashboard"
               element={
-                <ProtectedRoute allowedRole="transporter" requireOnboarding={true}>
+                <ProtectedRoute allowedRole="transporter">
                   <TransporterDashboardPage />
                 </ProtectedRoute>
               }
@@ -204,7 +202,7 @@ export const App: React.FC = () => {
             <Route
               path="/transporter/route-optimization"
               element={
-                <ProtectedRoute allowedRole="transporter" requireOnboarding={true}>
+                <ProtectedRoute allowedRole="transporter">
                   <RouteOptimizationPage />
                 </ProtectedRoute>
               }
@@ -212,7 +210,7 @@ export const App: React.FC = () => {
             <Route
               path="/transporter/live-tracking"
               element={
-                <ProtectedRoute allowedRole="transporter" requireOnboarding={true}>
+                <ProtectedRoute allowedRole="transporter">
                   <LiveTrackingPage />
                 </ProtectedRoute>
               }
@@ -220,7 +218,7 @@ export const App: React.FC = () => {
             <Route
               path="/transporter/delivery-confirmation"
               element={
-                <ProtectedRoute allowedRole="transporter" requireOnboarding={true}>
+                <ProtectedRoute allowedRole="transporter">
                   <DeliveryConfirmationPage />
                 </ProtectedRoute>
               }
@@ -228,7 +226,7 @@ export const App: React.FC = () => {
             <Route
               path="/transporter/profile"
               element={
-                <ProtectedRoute allowedRole="transporter" requireOnboarding={false}>
+                <ProtectedRoute allowedRole="transporter">
                   <TransporterProfilePage />
                 </ProtectedRoute>
               }

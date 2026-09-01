@@ -30,7 +30,12 @@ export const RouteOptimizationPage: React.FC = () => {
 
   const handleStartTrip = () => {
     if (!isProfileComplete('transporter')) {
-      navigate('/transporter/profile');
+      navigate('/transporter/profile', {
+        state: {
+          returnTo: '/transporter/route-optimization',
+          actionNotice: 'Complete your transporter fleet profile before starting delivery trips.'
+        }
+      });
       return;
     }
     startTrip(order.id);

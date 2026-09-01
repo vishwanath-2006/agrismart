@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { useApp } from '../../context/AppContext';
 import { FarmerProfileData } from '../../types';
@@ -7,9 +7,13 @@ import { FARMER_AVATAR } from '../../data/mockData';
 
 export const FarmerProfilePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = (location.state as any)?.returnTo;
+  const actionNotice = (location.state as any)?.actionNotice;
+
   const { farmerProfile, saveFarmerProfile, isProfileLoading, logout, switchRole, produceListings } = useApp();
 
-  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [isEditing, setIsEditing] = useState<boolean>(Boolean(returnTo));
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState(false);
@@ -50,21 +54,11 @@ export const FarmerProfilePage: React.FC = () => {
             pincode: prev.pincode || '570001'
           }));
         },
-        () => {
-          setTimeout(() => {
-            setIsLocating(false);
-            setFormData(prev => ({
-              ...prev,
-              latitude: 12.2958,
-              longitude: 76.6394,
-              farmLocation: 'GPS Verified: Mysore Farm Gate 2',
-              village: prev.village || 'Nanjangud Rural',
-              district: prev.district || 'Mysore',
-              state: prev.state || 'Karnataka',
-              pincode: prev.pincode || '570001'
-            }));
-          }, 800);
-        }
+        (err) => {
+          console.warn('Geolocation notice:', err);
+          setIsLocating(false);
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
       );
     } else {
       setIsLocating(false);
@@ -93,9 +87,12 @@ export const FarmerProfilePage: React.FC = () => {
 
       if (isEditing) {
         setIsEditing(false);
+        if (returnTo) {
+          navigate(returnTo);
+        }
       } else if (markComplete || currentStep === totalSteps) {
         setIsEditing(false);
-        navigate('/farmer/dashboard');
+        navigate(returnTo || '/farmer/dashboard');
       } else if (nextStep) {
         setCurrentStep(nextStep);
       }
@@ -400,6 +397,14 @@ export const FarmerProfilePage: React.FC = () => {
       }}
     >
       <div className="flex flex-col w-full max-w-2xl mx-auto pb-12">
+        {/* Action-triggered Notice Banner */}
+        {actionNotice && (
+          <div className="mt-2 mb-4 p-3.5 bg-primary-fixed/20 border border-primary/30 rounded-2xl flex items-center gap-3 text-on-surface shadow-sm">
+            <span className="material-symbols-outlined text-primary text-[22px]">info</span>
+            <p className="text-[13px] font-semibold">{actionNotice}</p>
+          </div>
+        )}
+
         {/* Header Title & Progress Indicator */}
         <div className="mb-6 mt-2 bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/20 shadow-card">
           <div className="flex items-center justify-between mb-2">

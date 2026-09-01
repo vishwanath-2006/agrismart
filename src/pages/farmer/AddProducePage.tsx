@@ -74,6 +74,12 @@ export const AddProducePage: React.FC = () => {
 
     if (!isProfileComplete('farmer')) {
       setValidationError('Please complete your Farmer Profile before listing produce.');
+      navigate('/farmer/profile', {
+        state: {
+          returnTo: '/farmer/add-produce',
+          actionNotice: 'Complete your farm details to publish your produce listing on the marketplace.'
+        }
+      });
       return;
     }
 
@@ -166,13 +172,18 @@ export const AddProducePage: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-tertiary text-[22px]">warning</span>
                   <div>
-                    <p className="text-[13px] font-bold text-on-surface">Farmer Profile Incomplete</p>
-                    <p className="text-[12px] text-on-surface-variant">Complete your farm details before listing produce.</p>
+                    <p className="text-[13px] font-bold text-on-surface">Farmer Profile Required</p>
+                    <p className="text-[12px] text-on-surface-variant">Complete your farm details before publishing produce.</p>
                   </div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => navigate('/farmer/profile')}
+                  onClick={() => navigate('/farmer/profile', {
+                    state: {
+                      returnTo: '/farmer/add-produce',
+                      actionNotice: 'Complete your farm details to publish your produce listing on the marketplace.'
+                    }
+                  })}
                   className="px-3.5 py-1.5 bg-tertiary text-on-tertiary text-[12px] font-bold rounded-xl hover:bg-tertiary/90 transition-all shrink-0"
                 >
                   Complete Profile
