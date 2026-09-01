@@ -28,3 +28,11 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Local databases and uploads
+*.db
+*.sqlite
+*.sqlite3
+uploads/
+__pycache__/
+*.pyc

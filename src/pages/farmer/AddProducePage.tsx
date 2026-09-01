@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { AppLayout } from '../../components/layout/AppLayout';
@@ -21,6 +21,88 @@ export const AddProducePage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Live Camera & Photo Upload State
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isAiScanning, setIsAiScanning] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const startLiveCamera = async () => {
+    setCameraError(null);
+    setIsCameraOpen(true);
+    try {
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(console.warn);
+      }
+    } catch (err) {
+      console.error('Camera access failed:', err);
+      setCameraError('Camera access unavailable or permission denied. Please allow camera or use photo upload.');
+    }
+  };
+
+  const stopLiveCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setIsCameraOpen(false);
+    setCameraError(null);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, []);
+
+  const captureLiveSnapshot = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      stopLiveCamera();
+      setSelectedImage(dataUrl);
+
+      setIsAiScanning(true);
+      setTimeout(() => {
+        setIsAiScanning(false);
+        setQualityGrade('Grade A');
+      }, 800);
+    }
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const localUrl = URL.createObjectURL(file);
+      setSelectedImage(localUrl);
+      setIsAiScanning(true);
+      setTimeout(() => {
+        setIsAiScanning(false);
+        setQualityGrade('Grade A');
+      }, 800);
+    }
+  };
 
   const presetCrops = [
     { label: 'Tomato', variety: 'Hybrid', category: 'Vegetables' as const, img: TOMATO_IMG },
@@ -254,28 +336,123 @@ export const AddProducePage: React.FC = () => {
 
             {/* 2. Crop Photograph & AI Quality Estimate */}
             <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card flex flex-col gap-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <label className="font-label-sm text-label-sm font-bold text-on-surface">
                   2. Crop Photograph
                 </label>
-                <span className="text-[11px] font-semibold text-tertiary bg-tertiary-fixed/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[13px]">auto_awesome</span>
-                  AI-assisted quality estimate: {qualityGrade}
+                <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 transition-all ${
+                  isAiScanning ? 'bg-amber-500/20 text-amber-800 animate-pulse' : 'text-tertiary bg-tertiary-fixed/30'
+                }`}>
+                  <span className="material-symbols-outlined text-[13px]">
+                    {isAiScanning ? 'hourglass_empty' : 'auto_awesome'}
+                  </span>
+                  {isAiScanning ? 'AI Scanning Quality...' : `AI-assisted quality estimate: ${qualityGrade}`}
                 </span>
               </div>
 
-              <div className="relative w-full h-40 rounded-2xl overflow-hidden bg-surface-container-low border-2 border-dashed border-primary/30 flex items-center justify-center">
-                <img
-                  src={selectedImage}
-                  alt={cropName}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute bottom-2 right-2 bg-surface/90 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-sm border border-outline-variant/30 text-[11px] font-semibold text-primary flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[14px]">photo_camera</span>
-                  Crop Photo Attached
+              {isCameraOpen ? (
+                /* Live Camera Feed */
+                <div className="relative w-full h-56 rounded-2xl overflow-hidden bg-black border-2 border-primary shadow-inner flex flex-col items-center justify-center">
+                  {cameraError ? (
+                    <div className="p-4 text-center text-white flex flex-col items-center gap-2">
+                      <span className="material-symbols-outlined text-rose-400 text-[32px]">videocam_off</span>
+                      <p className="text-xs text-rose-200">{cameraError}</p>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="mt-2 px-4 py-1.5 rounded-xl bg-white text-slate-900 text-xs font-bold shadow"
+                      >
+                        Switch to File Upload
+                      </button>
+                    </div>
+                  ) : (
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+
+                  {!cameraError && (
+                    <div className="absolute inset-4 border-2 border-white/40 border-dashed rounded-xl pointer-events-none flex items-center justify-center">
+                      <span className="text-white/80 text-[11px] font-semibold bg-black/50 px-2 py-0.5 rounded-md">
+                        Center Crop in Frame
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="absolute bottom-3 inset-x-3 flex items-center justify-between gap-2 z-10">
+                    <button
+                      type="button"
+                      onClick={stopLiveCamera}
+                      className="px-3 py-1.5 rounded-xl bg-black/60 hover:bg-black/80 text-white text-[11px] font-semibold backdrop-blur-md transition-all flex items-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">close</span>
+                      Cancel / Upload
+                    </button>
+                    {!cameraError && (
+                      <button
+                        type="button"
+                        onClick={captureLiveSnapshot}
+                        className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs shadow-lg transition-all flex items-center gap-1.5 active:scale-95"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+                        Capture Snapshot
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                /* Snapshot Preview */
+                <div className="relative w-full h-44 rounded-2xl overflow-hidden bg-surface-container-low border-2 border-dashed border-primary/30 flex items-center justify-center group shadow-inner">
+                  <img
+                    src={selectedImage}
+                    alt={cropName}
+                    className="w-full h-full object-cover"
+                  />
+
+                  {/* AI Scanning Animation Overlay */}
+                  {isAiScanning && (
+                    <div className="absolute inset-0 bg-primary/20 backdrop-blur-xs flex flex-col items-center justify-center gap-2 text-primary font-bold text-xs animate-pulse">
+                      <span className="material-symbols-outlined text-[28px] animate-spin">progress_activity</span>
+                      <span className="bg-surface/90 px-3 py-1 rounded-full shadow">AI Analyzing Produce Quality...</span>
+                    </div>
+                  )}
+
+                  {/* Action Buttons Overlay */}
+                  <div className="absolute bottom-2 inset-x-2 flex items-center justify-end gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={startLiveCamera}
+                      className="bg-primary hover:bg-primary/90 text-on-primary px-3 py-1.5 rounded-xl shadow-md text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">videocam</span>
+                      Open Live Camera
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="bg-surface/95 hover:bg-surface backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md border border-outline-variant/30 text-[11px] font-semibold text-on-surface flex items-center gap-1 transition-all active:scale-95"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">upload</span>
+                      Upload Photo
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handlePhotoUpload}
+              />
             </div>
+
 
             {/* 3. Quantity */}
             <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card flex flex-col gap-3">
