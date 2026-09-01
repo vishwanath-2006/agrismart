@@ -5,7 +5,7 @@ import { AppLayout } from '../../components/layout/AppLayout';
 import { TOMATO_IMG } from '../../data/mockData';
 import { MarketComparisonItem } from '../../types';
 import { fetchMarketComparisonsFromSupabase } from '../../services/mandiPriceService';
-import DepthCarousel, { DepthCarouselItem } from '../../components/common/DepthCarousel';
+import AccordionGallery, { AccordionGalleryItem } from '../../components/common/AccordionGallery';
 
 export const MarketComparisonPage: React.FC = () => {
   const navigate = useNavigate();
@@ -129,20 +129,20 @@ export const MarketComparisonPage: React.FC = () => {
     return top?.id || null;
   }, [markets]);
 
-  const marketCarouselItems: DepthCarouselItem[] = useMemo(() => {
+  const marketAccordionItems: AccordionGalleryItem[] = useMemo(() => {
     return sortedMarkets.map((mkt, idx) => ({
       image: MARKET_IMAGES[idx % MARKET_IMAGES.length],
       alt: mkt.marketName,
-      title: mkt.marketName,
-      subtitle: `${mkt.city}, ${mkt.state || 'Karnataka'} • ${mkt.distanceKm} km`,
-      badge: mkt.id === bestMarketId ? 'BEST RETURN' : `Net: ₹${mkt.estNetReturnPerKg.toFixed(2)}/kg`,
+      label: mkt.marketName,
+      sublabel: `Net: ₹${mkt.estNetReturnPerKg.toFixed(2)}/kg • Mandi: ₹${mkt.currentPricePerKg.toFixed(2)}/kg • ${mkt.distanceKm} km`,
+      badge: mkt.id === bestMarketId ? 'BEST RETURN' : undefined,
       tag: `Mandi: ₹${mkt.currentPricePerKg.toFixed(2)}/kg`,
-      price: 'Click to view crops →',
+      price: `Net: ₹${mkt.estNetReturnPerKg.toFixed(2)}/kg`,
       data: mkt
     }));
   }, [sortedMarkets, bestMarketId]);
 
-  const cropCarouselItems: DepthCarouselItem[] = useMemo(() => {
+  const cropAccordionItems: AccordionGalleryItem[] = useMemo(() => {
     const dist = selectedMarket?.distanceKm || 40;
     return CROP_LIST_DATA.map(crop => {
       const baseMandi = crop.name.includes('Bean')
@@ -160,8 +160,8 @@ export const MarketComparisonPage: React.FC = () => {
       return {
         image: crop.img,
         alt: crop.name,
-        title: crop.name,
-        subtitle: `${crop.variety} • ${crop.qty} kg load`,
+        label: crop.name,
+        sublabel: `${crop.variety} • ${crop.qty} kg load • Net: ₹${netEst.toFixed(2)}/kg (Mandi ₹${baseMandi}/kg)`,
         badge: crop.name === selectedCropName ? 'SELECTED CROP' : undefined,
         tag: `Mandi: ₹${baseMandi.toFixed(2)}/kg`,
         price: `Net: ₹${netEst.toFixed(2)}/kg`,
@@ -170,16 +170,16 @@ export const MarketComparisonPage: React.FC = () => {
     });
   }, [selectedCropName, selectedMarket]);
 
-  const filteredCropCarouselItems = useMemo(() => {
-    if (!searchTerm.trim()) return cropCarouselItems;
+  const filteredCropAccordionItems = useMemo(() => {
+    if (!searchTerm.trim()) return cropAccordionItems;
     const term = searchTerm.toLowerCase().trim();
-    return cropCarouselItems.filter(
+    return cropAccordionItems.filter(
       item =>
-        item.title?.toLowerCase().includes(term) ||
-        item.subtitle?.toLowerCase().includes(term) ||
+        item.label?.toLowerCase().includes(term) ||
+        item.sublabel?.toLowerCase().includes(term) ||
         item.tag?.toLowerCase().includes(term)
     );
-  }, [cropCarouselItems, searchTerm]);
+  }, [cropAccordionItems, searchTerm]);
 
   const handleSelectMarket = (mkt: MarketComparisonItem) => {
     setSelectedMarket(mkt);
@@ -332,10 +332,10 @@ export const MarketComparisonPage: React.FC = () => {
           )}
         </div>
 
-        {/* DepthCarousel 3D Stage from React Bits */}
+        {/* AccordionGallery Stage from React Bits */}
         {!isLoading && !hasError && (
           <div className="w-full relative overflow-hidden rounded-3xl bg-surface-container-lowest border border-outline-variant/30 shadow-card py-5 my-2">
-            <div className="px-5 pb-2 flex items-center justify-between gap-2 flex-wrap">
+            <div className="px-5 pb-3 flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
                 {viewMode === 'crop' && (
                   <button
@@ -356,34 +356,33 @@ export const MarketComparisonPage: React.FC = () => {
                   </span>
                   <span>
                     {viewMode === 'market'
-                      ? `3D Market Corridors (Comparing markets for ${selectedCropName})`
+                      ? `Market Corridors (Comparing markets for ${selectedCropName})`
                       : `Available Crops at ${selectedMarket?.marketName || 'Selected Market'}`}
                   </span>
                 </span>
               </div>
               <span className="text-[11px] text-primary font-semibold bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-                {viewMode === 'market' ? 'Click Card to Drill Down' : 'Drag / Click to Select'}
+                {viewMode === 'market' ? 'Hover/Click Panel to Drill Down' : 'Hover/Click to Select'}
               </span>
             </div>
 
-            <div style={{ height: '400px', position: 'relative' }}>
-              <DepthCarousel
-                items={viewMode === 'market' ? marketCarouselItems : filteredCropCarouselItems}
-                cardWidth={280}
-                cardHeight={350}
+            <div className="px-4">
+              <AccordionGallery
+                items={viewMode === 'market' ? marketAccordionItems : filteredCropAccordionItems}
+                defaultIndex={0}
+                expandRatio={0.52}
+                height={460}
+                gap={12}
                 radius={20}
-                depth={200}
-                spread={85}
-                tilt={20}
-                tiltDirection="right"
-                perspective={1300}
-                visibleCards={4}
-                falloff={0.2}
-                blur={4}
-                autoplay={false}
-                loop={true}
-                showControls={true}
-                showIndicators={true}
+                accentColor="#0f5238"
+                overlayColor="#041a10"
+                textColor="#ffffff"
+                trigger="hover"
+                grayscale={true}
+                showLabels={true}
+                duration={0.6}
+                tilt={8}
+                parallax={0.5}
                 onChange={(idx, item) => {
                   if (viewMode === 'market' && item?.data) {
                     setSelectedMarket(item.data);
