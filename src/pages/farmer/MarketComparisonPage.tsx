@@ -6,6 +6,11 @@ import { TOMATO_IMG } from '../../data/mockData';
 import { MarketComparisonItem } from '../../types';
 import { fetchMarketComparisonsFromSupabase } from '../../services/mandiPriceService';
 import AccordionGallery, { AccordionGalleryItem } from '../../components/common/AccordionGallery';
+import ContextDropdown, { DropdownOption } from '../../components/common/ContextDropdown';
+
+export function formatCleanLabel(name: string): string {
+  return name.replace(/\s*\(\d+\s*kg\)/gi, '').trim();
+}
 
 export const MarketComparisonPage: React.FC = () => {
   const navigate = useNavigate();
@@ -181,6 +186,34 @@ export const MarketComparisonPage: React.FC = () => {
     );
   }, [cropAccordionItems, searchTerm]);
 
+  const cropDropdownOptions: DropdownOption[] = useMemo(() => {
+    return CROP_LIST_DATA.map(c => ({
+      id: c.name,
+      label: formatCleanLabel(c.name),
+      sublabel: c.variety,
+      imageUrl: c.img
+    }));
+  }, []);
+
+  const marketDropdownOptions: DropdownOption[] = useMemo(() => {
+    if (markets.length === 0) {
+      return [
+        {
+          id: 'default',
+          label: 'Kanjirappally Market',
+          sublabel: 'Kottayam, Kerala • 40 km',
+          imageUrl: MARKET_IMAGES[0]
+        }
+      ];
+    }
+    return markets.map((m, idx) => ({
+      id: m.id,
+      label: m.marketName,
+      sublabel: `${m.city}, ${m.state || 'Karnataka'} • ${m.distanceKm} km`,
+      imageUrl: MARKET_IMAGES[idx % MARKET_IMAGES.length]
+    }));
+  }, [markets]);
+
   const handleSelectMarket = (mkt: MarketComparisonItem) => {
     setSelectedMarket(mkt);
     setViewMode('crop');
@@ -235,80 +268,25 @@ export const MarketComparisonPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Dynamic Context Selector (Inverted) */}
+        {/* Dynamic Context Selector (Inverted with Clean Labels, Thumbnails & Single Arrow) */}
         {viewMode === 'market' ? (
-          /* Market View Active -> Primary Dropdown: Select Crop */
-          <div className="bg-surface-container-lowest p-3.5 rounded-2xl border border-outline-variant/30 shadow-card flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0 shadow-sm border border-outline-variant/20">
-                <img
-                  className="w-full h-full object-cover"
-                  alt={selectedCropName}
-                  src={
-                    selectedCropName.toLowerCase().includes('bean')
-                      ? 'https://images.unsplash.com/photo-1551893665-f843f600794e?auto=format&fit=crop&w=800&q=80'
-                      : selectedProduce?.imageUrl || TOMATO_IMG
-                  }
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  Select Crop (Compare across Markets)
-                </span>
-                <select
-                  value={selectedCropName}
-                  onChange={e => handleCropChange(e.target.value)}
-                  className="w-full bg-transparent font-title-md font-bold text-on-surface outline-none cursor-pointer truncate"
-                >
-                  <option value="Beans">Beans (600 kg)</option>
-                  <option value="Tomato (Hybrid)">Tomato (Hybrid) (500 kg)</option>
-                  <option value="Red Onion">Red Onion (1200 kg)</option>
-                  <option value="Potato Jyoti">Potato Jyoti (800 kg)</option>
-                  <option value="Green Chilli">Green Chilli (300 kg)</option>
-                  <option value="Cabbage">Cabbage (1000 kg)</option>
-                </select>
-                <p className="text-[12px] text-on-surface-variant flex items-center gap-1 mt-0.5">
-                  <span className="material-symbols-outlined text-[14px] text-primary">location_on</span>
-                  <span>Farm Origin: Mysore, Karnataka ({payloadQuantityKg} kg load)</span>
-                </p>
-              </div>
-            </div>
-            <span className="material-symbols-outlined text-on-surface-variant shrink-0">expand_more</span>
-          </div>
+          <ContextDropdown
+            categoryLabel="Select Crop (Compare across Markets)"
+            options={cropDropdownOptions}
+            selectedId={selectedCropName}
+            onSelect={opt => handleCropChange(opt.id)}
+            subtext="Farm Origin: Mysore, Karnataka"
+            subtextIcon="location_on"
+          />
         ) : (
-          /* Crop View Active -> Primary Dropdown: Select Market */
-          <div className="bg-surface-container-lowest p-3.5 rounded-2xl border border-outline-variant/30 shadow-card flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-11 h-11 rounded-xl bg-primary-container/40 flex items-center justify-center shrink-0 text-primary">
-                <span className="material-symbols-outlined text-[24px]">storefront</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  Select Market (View Traded Inventory)
-                </span>
-                <select
-                  value={selectedMarket?.id || (markets[0]?.id ?? '')}
-                  onChange={e => handleMarketChange(e.target.value)}
-                  className="w-full bg-transparent font-title-md font-bold text-on-surface outline-none cursor-pointer truncate"
-                >
-                  {markets.length > 0 ? (
-                    markets.map(m => (
-                      <option key={m.id} value={m.id}>
-                        {m.marketName} ({m.city}, {m.distanceKm} km)
-                      </option>
-                    ))
-                  ) : (
-                    <option value="default">Kanjirappally Market (Kottayam, Kerala - 40 km)</option>
-                  )}
-                </select>
-                <p className="text-[12px] text-on-surface-variant flex items-center gap-1 mt-0.5">
-                  <span className="material-symbols-outlined text-[14px] text-primary">near_me</span>
-                  <span>Corridor: {selectedMarket?.distanceKm || 40} km from farm</span>
-                </p>
-              </div>
-            </div>
-            <span className="material-symbols-outlined text-on-surface-variant shrink-0">expand_more</span>
-          </div>
+          <ContextDropdown
+            categoryLabel="Select Market (View Traded Inventory)"
+            options={marketDropdownOptions}
+            selectedId={selectedMarket?.id || (markets[0]?.id ?? 'default')}
+            onSelect={opt => handleMarketChange(opt.id)}
+            subtext={`Corridor: ${selectedMarket?.distanceKm || 40} km from farm`}
+            subtextIcon="near_me"
+          />
         )}
 
         {/* Search Bar */}
