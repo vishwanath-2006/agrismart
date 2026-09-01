@@ -16,7 +16,7 @@ export const AddProducePage: React.FC = () => {
   const [minOrderKg, setMinOrderKg] = useState('100');
   const [pricePerKg, setPricePerKg] = useState('30');
   const [shelfLifeDays, setShelfLifeDays] = useState('8');
-  const [selectedImage, setSelectedImage] = useState(TOMATO_IMG);
+  const [selectedImages, setSelectedImages] = useState<string[]>([TOMATO_IMG, TOMATO_IMG]);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
@@ -105,7 +105,10 @@ export const AddProducePage: React.FC = () => {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
       stopLiveCamera();
-      setSelectedImage(dataUrl);
+      setSelectedImages(prev => {
+        if (prev.length >= 6) return prev;
+        return [...prev, dataUrl];
+      });
 
       // Trigger AI quality scanning animation
       setIsAiScanning(true);
@@ -117,16 +120,23 @@ export const AddProducePage: React.FC = () => {
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const localUrl = URL.createObjectURL(file);
-      setSelectedImage(localUrl);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      const newUrls = files.map(file => URL.createObjectURL(file));
+      setSelectedImages(prev => {
+        const combined = [...prev, ...newUrls];
+        return combined.slice(0, 6); // Max 6 photos
+      });
       setIsAiScanning(true);
       setTimeout(() => {
         setIsAiScanning(false);
         setQualityGrade('Grade A');
       }, 800);
     }
+  };
+
+  const handleRemovePhoto = (indexToRemove: number) => {
+    setSelectedImages(prev => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
 
@@ -166,7 +176,7 @@ export const AddProducePage: React.FC = () => {
     setCropName(preset.label);
     setVariety(preset.variety);
     setCategory(preset.category);
-    setSelectedImage(preset.img);
+    setSelectedImages([preset.img, preset.img]);
     setValidationError(null);
 
     // If a govt price exists for this crop, default asking price near it
@@ -196,6 +206,11 @@ export const AddProducePage: React.FC = () => {
       return;
     }
 
+    if (selectedImages.length < 2) {
+      setValidationError('Please upload at least 2 photos (maximum 6) of your produce.');
+      return;
+    }
+
     const qty = Number(quantityKg);
     if (isNaN(qty) || qty <= 0) {
       setValidationError('Enter a valid quantity (greater than 0 kg).');
@@ -221,7 +236,7 @@ export const AddProducePage: React.FC = () => {
         pricePerKg: price,
         harvestDate: 'Today, Just Harvested',
         shelfLifeDays: Number(shelfLifeDays) || 7,
-        imageUrl: selectedImage,
+        imageUrl: selectedImages[0],
         description: `Freshly harvested ${cropName} (${variety}) from ${currentUser?.location || 'Farm'}. Quality Estimate: ${qualityGrade}.`
       });
 
@@ -363,22 +378,25 @@ export const AddProducePage: React.FC = () => {
             {/* 2. Crop Photograph & AI Quality Estimate */}
             <div className="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 shadow-card flex flex-col gap-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <label className="font-label-sm text-label-sm font-bold text-on-surface">
-                  2. Crop Photograph
-                </label>
+                <div className="flex flex-col">
+                  <label className="font-label-sm text-label-sm font-bold text-on-surface">
+                    2. Crop Photograph
+                  </label>
+                  <span className="text-[11px] text-on-surface-variant font-medium">Min 2, Max 6 photos</span>
+                </div>
                 <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1 transition-all ${
                   isAiScanning ? 'bg-amber-500/20 text-amber-800 animate-pulse' : 'text-tertiary bg-tertiary-fixed/30'
                 }`}>
                   <span className="material-symbols-outlined text-[13px]">
                     {isAiScanning ? 'hourglass_empty' : 'auto_awesome'}
                   </span>
-                  {isAiScanning ? 'AI Scanning Quality...' : `AI-assisted quality estimate: ${qualityGrade}`}
+                  {isAiScanning ? 'AI Scanning...' : `AI Estimate: ${qualityGrade}`}
                 </span>
               </div>
 
               {isCameraOpen ? (
                 /* Live Camera Feed */
-                <div className="relative w-full h-56 rounded-2xl overflow-hidden bg-black border-2 border-primary shadow-inner flex flex-col items-center justify-center">
+                <div className="relative w-full h-64 rounded-2xl overflow-hidden bg-black border-2 border-primary shadow-inner flex flex-col items-center justify-center">
                   {cameraError ? (
                     <div className="p-4 text-center text-white flex flex-col items-center gap-2">
                       <span className="material-symbols-outlined text-rose-400 text-[32px]">videocam_off</span>
@@ -416,7 +434,7 @@ export const AddProducePage: React.FC = () => {
                       className="px-3 py-1.5 rounded-xl bg-black/60 hover:bg-black/80 text-white text-[11px] font-semibold backdrop-blur-md transition-all flex items-center gap-1 cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-[14px]">close</span>
-                      Cancel / Upload
+                      Cancel
                     </button>
                     {!cameraError && (
                       <button
@@ -425,52 +443,77 @@ export const AddProducePage: React.FC = () => {
                         className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs shadow-lg transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
                       >
                         <span className="material-symbols-outlined text-[18px]">photo_camera</span>
-                        Capture Snapshot
+                        Capture Photo
                       </button>
                     )}
                   </div>
                 </div>
               ) : (
-                /* Snapshot Preview (Interactive with Unlimited Retakes) */
-                <div
-                  onClick={startLiveCamera}
-                  className="relative w-full h-44 rounded-2xl overflow-hidden bg-surface-container-low border-2 border-dashed border-primary/30 flex items-center justify-center group shadow-inner cursor-pointer hover:border-primary transition-all"
-                  title="Click to Open Live Camera (Unlimited Retakes)"
-                >
-                  <img
-                    src={selectedImage}
-                    alt={cropName}
-                    className="w-full h-full object-cover"
-                  />
-
+                /* Snapshot Grid */
+                <div className="flex flex-col gap-3">
                   {/* AI Scanning Animation Overlay */}
                   {isAiScanning && (
-                    <div className="absolute inset-0 bg-primary/20 backdrop-blur-xs flex flex-col items-center justify-center gap-2 text-primary font-bold text-xs animate-pulse">
-                      <span className="material-symbols-outlined text-[28px] animate-spin">progress_activity</span>
-                      <span className="bg-surface/90 px-3 py-1 rounded-full shadow">AI Analyzing Produce Quality...</span>
+                    <div className="w-full h-8 bg-primary/10 rounded-xl flex items-center justify-center gap-2 text-primary font-bold text-xs animate-pulse mb-1">
+                      <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                      <span>AI Analyzing Produce Quality...</span>
                     </div>
                   )}
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {selectedImages.map((img, index) => (
+                      <div key={index} className="relative w-full h-28 rounded-xl overflow-hidden bg-surface-container-low border border-outline-variant/30 group">
+                        <img
+                          src={img}
+                          alt={`${cropName} ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemovePhoto(index);
+                          }}
+                          className="absolute top-1.5 right-1.5 w-7 h-7 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white backdrop-blur-md transition-all z-10 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">close</span>
+                        </button>
+                      </div>
+                    ))}
 
-                  {/* Action Buttons Overlay */}
-                  <div className="absolute bottom-2 right-2 flex items-center gap-1.5 flex-wrap z-10" onClick={e => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      onClick={startLiveCamera}
-                      className="bg-primary hover:bg-primary/90 text-on-primary px-3.5 py-1.5 rounded-xl shadow-md text-[11px] font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-                      title="Open Live Camera (Unlimited Retakes)"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">photo_camera</span>
-                      <span>{selectedImage === TOMATO_IMG ? 'Open Live Camera' : 'Retake / Live Camera'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="bg-surface/95 hover:bg-surface backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md border border-outline-variant/30 text-[11px] font-semibold text-on-surface flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
-                      title="Upload from Device Gallery"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">upload</span>
-                      <span>Upload Photo</span>
-                    </button>
+                    {selectedImages.length < 6 && (
+                      <div
+                        onClick={startLiveCamera}
+                        className="relative w-full h-28 rounded-xl overflow-hidden bg-surface-container-low border-2 border-dashed border-primary/40 flex flex-col items-center justify-center group shadow-sm cursor-pointer hover:border-primary hover:bg-primary/5 transition-all"
+                        title="Click to Open Live Camera"
+                      >
+                        <span className="material-symbols-outlined text-[28px] text-primary mb-1 group-hover:scale-110 transition-transform">add_a_photo</span>
+                        <span className="text-[11px] font-semibold text-on-surface-variant group-hover:text-primary">Add Photo ({selectedImages.length}/6)</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2 mt-1">
+                    {selectedImages.length < 6 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={startLiveCamera}
+                          className="bg-primary hover:bg-primary/90 text-on-primary px-3 py-1.5 rounded-xl shadow-md text-[11px] font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">photo_camera</span>
+                          <span>Open Camera</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="bg-surface/95 hover:bg-surface backdrop-blur-md px-3 py-1.5 rounded-xl shadow-sm border border-outline-variant/30 text-[11px] font-semibold text-on-surface flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">upload</span>
+                          <span>Upload Photos</span>
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -479,7 +522,7 @@ export const AddProducePage: React.FC = () => {
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
+                multiple
                 className="hidden"
                 onChange={handlePhotoUpload}
               />
