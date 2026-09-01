@@ -4,7 +4,6 @@ import { useApp } from '../../context/AppContext';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { AIInsightBanner } from '../../components/common/AIInsightBanner';
 import { PriceSplineChart } from '../../components/common/PriceSplineChart';
-import { FARMER_AVATAR } from '../../data/mockData';
 
 export const FarmerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -27,27 +26,31 @@ export const FarmerDashboardPage: React.FC = () => {
     <AppLayout title="Farmer Dashboard">
       <div className="flex flex-col w-full gap-5 pb-8">
         
-        {/* Header Greeting */}
-        <div className="mt-2 flex items-center justify-between">
-          <div>
-            <h1 className="text-headline-lg-mobile md:text-headline-lg font-headline-lg-mobile text-on-surface font-bold">
-              Good morning, {farmerProfile?.fullName?.split(' ')[0] || 'Farmer'}
-            </h1>
-            <p className="text-body-md font-body-md text-on-surface-variant mt-0.5">
-              Here's what's happening in your market today.
-            </p>
-          </div>
+        {/* Active Dispatch Live Tracking Card (Moved to top) */}
+        {activeOrder && (
           <div
-            onClick={() => navigate('/farmer/profile')}
-            className="h-12 w-12 rounded-full overflow-hidden shrink-0 shadow-sm border-2 border-primary/20 cursor-pointer active:scale-95 transition-transform"
+            onClick={() => navigate('/farmer/live-tracking')}
+            className="bg-surface-container-lowest rounded-2xl p-4 border-2 border-primary/30 shadow-card flex items-center justify-between gap-3 cursor-pointer hover:border-primary transition-all"
           >
-            <img
-              className="w-full h-full object-cover"
-              alt="Farmer Profile"
-              src={FARMER_AVATAR}
-            />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary-fixed/40 text-primary flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[22px]">local_shipping</span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  <h4 className="font-label-sm font-bold text-on-surface">
+                    Active Dispatch • Order #{activeOrder.orderNumber}
+                  </h4>
+                </div>
+                <p className="text-[12px] text-on-surface-variant mt-0.5">
+                  {activeOrder.cropName} ({activeOrder.quantityKg}kg) • Live GPS Tracking
+                </p>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-primary text-[20px]">arrow_forward</span>
           </div>
-        </div>
+        )}
 
         {/* 1. Primary Highlight Cards: Latest Mandi Price & Best Market */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -179,31 +182,6 @@ export const FarmerDashboardPage: React.FC = () => {
           />
         </div>
 
-        {/* Active Dispatch Live Tracking Card if shipment active */}
-        {activeOrder && (
-          <div
-            onClick={() => navigate('/farmer/live-tracking')}
-            className="bg-surface-container-lowest rounded-2xl p-4 border-2 border-primary/30 shadow-card flex items-center justify-between gap-3 cursor-pointer hover:border-primary transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary-fixed/40 text-primary flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[22px]">local_shipping</span>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  <h4 className="font-label-sm font-bold text-on-surface">
-                    Active Dispatch • Order #{activeOrder.orderNumber}
-                  </h4>
-                </div>
-                <p className="text-[12px] text-on-surface-variant mt-0.5">
-                  {activeOrder.cropName} ({activeOrder.quantityKg}kg) • Live GPS Tracking
-                </p>
-              </div>
-            </div>
-            <span className="material-symbols-outlined text-primary text-[20px]">arrow_forward</span>
-          </div>
-        )}
 
         {/* Your Produce Listings */}
         <div className="flex flex-col gap-3">
