@@ -170,8 +170,24 @@ export const MarketComparisonPage: React.FC = () => {
     });
   }, [selectedCropName, selectedMarket]);
 
+  const filteredCropCarouselItems = useMemo(() => {
+    if (!searchTerm.trim()) return cropCarouselItems;
+    const term = searchTerm.toLowerCase().trim();
+    return cropCarouselItems.filter(
+      item =>
+        item.title?.toLowerCase().includes(term) ||
+        item.subtitle?.toLowerCase().includes(term) ||
+        item.tag?.toLowerCase().includes(term)
+    );
+  }, [cropCarouselItems, searchTerm]);
+
   const handleSelectMarket = (mkt: MarketComparisonItem) => {
     setSelectedMarket(mkt);
+    setViewMode('crop');
+  };
+
+  const handleSelectCrop = (crop: any) => {
+    handleCropChange(crop.name);
     navigate('/farmer/price-history');
   };
 
@@ -190,7 +206,10 @@ export const MarketComparisonPage: React.FC = () => {
           <div className="inline-flex p-1 bg-surface-container rounded-full border border-outline-variant/30 shadow-inner">
             <button
               type="button"
-              onClick={() => setViewMode('market')}
+              onClick={() => {
+                setViewMode('market');
+                setSearchTerm('');
+              }}
               className={`px-5 py-2 rounded-full font-title-md text-label-sm font-semibold transition-all duration-200 ${
                 viewMode === 'market'
                   ? 'bg-primary text-on-primary shadow-sm'
@@ -201,7 +220,10 @@ export const MarketComparisonPage: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => setViewMode('crop')}
+              onClick={() => {
+                setViewMode('crop');
+                setSearchTerm('');
+              }}
               className={`px-5 py-2 rounded-full font-title-md text-label-sm font-semibold transition-all duration-200 ${
                 viewMode === 'crop'
                   ? 'bg-primary text-on-primary shadow-sm'
@@ -213,8 +235,48 @@ export const MarketComparisonPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Dynamic Context Selector */}
+        {/* Dynamic Context Selector (Inverted) */}
         {viewMode === 'market' ? (
+          /* Market View Active -> Primary Dropdown: Select Crop */
+          <div className="bg-surface-container-lowest p-3.5 rounded-2xl border border-outline-variant/30 shadow-card flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0 shadow-sm border border-outline-variant/20">
+                <img
+                  className="w-full h-full object-cover"
+                  alt={selectedCropName}
+                  src={
+                    selectedCropName.toLowerCase().includes('bean')
+                      ? 'https://images.unsplash.com/photo-1551893665-f843f600794e?auto=format&fit=crop&w=800&q=80'
+                      : selectedProduce?.imageUrl || TOMATO_IMG
+                  }
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                  Select Crop (Compare across Markets)
+                </span>
+                <select
+                  value={selectedCropName}
+                  onChange={e => handleCropChange(e.target.value)}
+                  className="w-full bg-transparent font-title-md font-bold text-on-surface outline-none cursor-pointer truncate"
+                >
+                  <option value="Beans">Beans (600 kg)</option>
+                  <option value="Tomato (Hybrid)">Tomato (Hybrid) (500 kg)</option>
+                  <option value="Red Onion">Red Onion (1200 kg)</option>
+                  <option value="Potato Jyoti">Potato Jyoti (800 kg)</option>
+                  <option value="Green Chilli">Green Chilli (300 kg)</option>
+                  <option value="Cabbage">Cabbage (1000 kg)</option>
+                </select>
+                <p className="text-[12px] text-on-surface-variant flex items-center gap-1 mt-0.5">
+                  <span className="material-symbols-outlined text-[14px] text-primary">location_on</span>
+                  <span>Farm Origin: Mysore, Karnataka ({payloadQuantityKg} kg load)</span>
+                </p>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-on-surface-variant shrink-0">expand_more</span>
+          </div>
+        ) : (
+          /* Crop View Active -> Primary Dropdown: Select Market */
           <div className="bg-surface-container-lowest p-3.5 rounded-2xl border border-outline-variant/30 shadow-card flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className="w-11 h-11 rounded-xl bg-primary-container/40 flex items-center justify-center shrink-0 text-primary">
@@ -222,7 +284,7 @@ export const MarketComparisonPage: React.FC = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  Select Market
+                  Select Market (View Traded Inventory)
                 </span>
                 <select
                   value={selectedMarket?.id || (markets[0]?.id ?? '')}
@@ -240,46 +302,8 @@ export const MarketComparisonPage: React.FC = () => {
                   )}
                 </select>
                 <p className="text-[12px] text-on-surface-variant flex items-center gap-1 mt-0.5">
-                  <span className="material-symbols-outlined text-[14px] text-primary">location_on</span>
-                  <span>Farm Origin: Mysore, Karnataka</span>
-                </p>
-              </div>
-            </div>
-            <span className="material-symbols-outlined text-on-surface-variant shrink-0">expand_more</span>
-          </div>
-        ) : (
-          <div className="bg-surface-container-lowest p-3.5 rounded-2xl border border-outline-variant/30 shadow-card flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0 shadow-sm border border-outline-variant/20">
-                <img
-                  className="w-full h-full object-cover"
-                  alt={selectedCropName}
-                  src={
-                    selectedCropName.toLowerCase().includes('bean')
-                      ? 'https://images.unsplash.com/photo-1551893665-f843f600794e?auto=format&fit=crop&w=800&q=80'
-                      : selectedProduce?.imageUrl || TOMATO_IMG
-                  }
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block">
-                  Select Crop
-                </span>
-                <select
-                  value={selectedCropName}
-                  onChange={e => handleCropChange(e.target.value)}
-                  className="w-full bg-transparent font-title-md font-bold text-on-surface outline-none cursor-pointer truncate"
-                >
-                  <option value="Beans">Beans (600 kg)</option>
-                  <option value="Tomato (Hybrid)">Tomato (Hybrid) (500 kg)</option>
-                  <option value="Red Onion">Red Onion (1200 kg)</option>
-                  <option value="Potato Jyoti">Potato Jyoti (800 kg)</option>
-                  <option value="Green Chilli">Green Chilli (300 kg)</option>
-                  <option value="Cabbage">Cabbage (1000 kg)</option>
-                </select>
-                <p className="text-[12px] text-on-surface-variant flex items-center gap-1 mt-0.5">
-                  <span className="material-symbols-outlined text-[14px] text-primary">location_on</span>
-                  <span>Farm Origin: Mysore, Karnataka</span>
+                  <span className="material-symbols-outlined text-[14px] text-primary">near_me</span>
+                  <span>Corridor: {selectedMarket?.distanceKm || 40} km from farm</span>
                 </p>
               </div>
             </div>
@@ -292,7 +316,11 @@ export const MarketComparisonPage: React.FC = () => {
           <span className="material-symbols-outlined text-on-surface-variant text-[20px]">search</span>
           <input
             type="text"
-            placeholder="Search crop or market..."
+            placeholder={
+              viewMode === 'market'
+                ? `Search market corridors for ${selectedCropName}...`
+                : `Search crops traded at ${selectedMarket?.marketName || 'this market'}...`
+            }
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             className="flex-1 bg-transparent outline-none font-body-md text-on-surface placeholder:text-outline-variant"
@@ -312,11 +340,14 @@ export const MarketComparisonPage: React.FC = () => {
                 {viewMode === 'crop' && (
                   <button
                     type="button"
-                    onClick={() => setViewMode('market')}
+                    onClick={() => {
+                      setViewMode('market');
+                      setSearchTerm('');
+                    }}
                     className="flex items-center gap-1 text-primary hover:bg-primary-fixed/30 bg-primary/10 border border-primary/20 px-3 py-1 rounded-full text-[12px] font-bold transition-all active:scale-95 shadow-sm"
                   >
                     <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-                    <span>Back to Markets</span>
+                    <span>Back to Market View</span>
                   </button>
                 )}
                 <span className="text-label-sm font-bold text-on-surface flex items-center gap-1.5">
@@ -325,7 +356,7 @@ export const MarketComparisonPage: React.FC = () => {
                   </span>
                   <span>
                     {viewMode === 'market'
-                      ? '3D Market Corridors (Click card to view crops)'
+                      ? `3D Market Corridors (Comparing markets for ${selectedCropName})`
                       : `Available Crops at ${selectedMarket?.marketName || 'Selected Market'}`}
                   </span>
                 </span>
@@ -337,7 +368,7 @@ export const MarketComparisonPage: React.FC = () => {
 
             <div style={{ height: '400px', position: 'relative' }}>
               <DepthCarousel
-                items={viewMode === 'market' ? marketCarouselItems : cropCarouselItems}
+                items={viewMode === 'market' ? marketCarouselItems : filteredCropCarouselItems}
                 cardWidth={280}
                 cardHeight={350}
                 radius={20}
@@ -364,7 +395,7 @@ export const MarketComparisonPage: React.FC = () => {
                   if (viewMode === 'market' && item?.data) {
                     handleSelectMarket(item.data);
                   } else if (viewMode === 'crop' && item?.data) {
-                    handleCropChange(item.data.name);
+                    handleSelectCrop(item.data);
                   }
                 }}
               />
